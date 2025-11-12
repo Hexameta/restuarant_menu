@@ -1,5 +1,4 @@
-const dbConn = require('../config/db');
-
+// const dbConn = require('../config/db');
 
 import dbConn from '../config/db.js';
 
@@ -21,14 +20,15 @@ export const addRestaurant = async (req, res, next) => {
     }
 
     const [result] = await dbConn.query(
-      'INSERT INTO companies (name, email, phone) VALUES (?, ?, ?, ?)',
+      'INSERT INTO companies (name, email, phone) VALUES (?, ?, ?)',
       [name.trim(), email || null, phone || null]
     );
 
     res.status(201).json({
       success: true,
       message: 'Restaurant added successfully',
-      company_id: result.insertId
+      company_id: result.insertId,
+      result: result.entries
     });
 
   } catch (error) {
@@ -36,6 +36,3 @@ export const addRestaurant = async (req, res, next) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
-
-module.exports = {addResturant}
