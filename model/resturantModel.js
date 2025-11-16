@@ -1,83 +1,79 @@
 const { DataTypes } = require("sequelize");
-const { DBConn } = require("../config/mysqlSequelize.js");
+const { DBConn, DBSync } = require("../config/mysqlSequelize.js");
 
 const Restaurant = DBConn.define(
-  "Restaurant",
+  "restaurants",
   {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },
-    restaurantName: DataTypes.STRING,
+    name: DataTypes.STRING,
     email: DataTypes.STRING,
     phone: DataTypes.STRING,
+    logo: DataTypes.STRING,
+    type: DataTypes.STRING,
     status: {
       type: DataTypes.ENUM,
-      values: ["active", "pending", "deactive"],
-      defaultValue: "active",
+      values: ["active", "inactive"],
+      defaultValue: "inactive",
     },
   },
   {}
 );
 
 const Branch = DBConn.define(
-  "Branch",
+  "branches",
   {
     id: {
-      type: DataTypes.STRING,
-      primaryKey: true,
-    },
-    restaurantId: {
       type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
     },
-    branchName: DataTypes.STRING,
-    address: DataTypes.STRING,
-    city: DataTypes.STRING,
-    country: DataTypes.STRING,
-    email: DataTypes.STRING,
+    restaurant_id: DataTypes.INTEGER,
+    name: DataTypes.STRING,
     phone: DataTypes.STRING,
+    email: DataTypes.STRING,
+    place: DataTypes.STRING,
+    city: DataTypes.STRING,
+    district: DataTypes.STRING,
+    state: DataTypes.STRING,
+    country: DataTypes.STRING,
+    slug: DataTypes.STRING, //default unique.. resturant name  + Country code + 3 digit
     status: {
       type: DataTypes.ENUM,
-      values: ["active", "pending", "deactive"],
-      defaultValue: "active",
+      values: ["active", "pending", "inactive", "block"],
+      defaultValue: "pending",
     },
   },
   {}
 );
 
 const Settings = DBConn.define(
-  "Settings",
+  "settings",
   {
     id: {
-      type: DataTypes.STRING,
+      type: DataTypes.INTEGER,
       primaryKey: true,
+      autoIncrement: true,
     },
-    branchId: {
-      type: DataTypes.STRING,
-    },
+    branch_id: DataTypes.INTEGER,
     logo: DataTypes.STRING,
     currency: DataTypes.STRING,
-    currencySymbol: DataTypes.STRING,
-    pdfMenu: DataTypes.STRING,
-    currencyPlacement: {
+    symbol: DataTypes.STRING,
+    pdf_menu_url: DataTypes.STRING,
+    symbol_position: {
       type: DataTypes.ENUM,
       values: ["left", "right"],
-    }
+    },
   },
   {}
 );
 
-Branch.belongsTo(Restaurant, { foreignKey: "restaurantId" });
-Settings.belongsTo(Branch,{foreignKey:"branchId"});
+Branch.belongsTo(Restaurant, { foreignKey: "restaurant_id" });
+Settings.belongsTo(Branch, { foreignKey: "branch_id" });
 
-(async () => {
-  try {
-    await DBConn.sync({ force: true }); // This will create tables if they don't exist
-    console.log("All tables synced successfully!");
-  } catch (err) {
-    console.error("Error syncing tables:", err);
-  }
-})();
+DBSync()
 
-module.exports = { Restaurant,Branch,Settings };
+module.exports = { Restaurant, Branch, Settings };

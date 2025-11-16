@@ -16,4 +16,13 @@ const mysqlTest = async () => {
 
 mysqlTest()
 
-module.exports ={DBConn}
+const DBSync = async () => {
+  try {
+    await DBConn.sync({ force: true }); // This will create tables if they don't exist
+    console.log("All tables synced successfully!");
+  } catch (err) {
+    console.error("Error syncing tables:", err);
+  }
+};
+
+module.exports = { DBConn, DBSync };
