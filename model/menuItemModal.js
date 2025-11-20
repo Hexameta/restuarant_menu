@@ -1,5 +1,5 @@
 const { DataTypes } = require("sequelize");
-const { DBConn, DBSync } = require("../config/mysqlSequelize.js");
+const { DBConn } = require("../config/postgresSequelize.js");
 const { Category } = require("./categoryModal.js");
 
 const MenuItem = DBConn.define(
@@ -18,16 +18,14 @@ const MenuItem = DBConn.define(
     offer_price: DataTypes.DECIMAL,
     is_available: DataTypes.BOOLEAN,
     special_note: DataTypes.TEXT, //give place holder .
-    tag:{
-        type:DataTypes.ENUM,
-        values:["veg,non veg","cool","hot" ]
-    }
+    tag: {
+      type: DataTypes.ENUM,
+      values: ["veg,non veg", "cool", "hot"],
+    },
   },
   {}
 );
 
 MenuItem.belongsTo(Category, { foreignKey: "category_id" });
-
-DBSync();
 
 module.exports = { MenuItem };

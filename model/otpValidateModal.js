@@ -1,5 +1,5 @@
-const { DataTypes } =  require("sequelize");
-const { DBConn, DBSync } = require("../config/mysqlSequelize.js");
+const { DataTypes } = require("sequelize");
+const { DBConn } = require("../config/postgresSequelize.js");
 
 const OTPValidate = DBConn.define(
   "otp_validate",
@@ -12,11 +12,9 @@ const OTPValidate = DBConn.define(
     otp: DataTypes.INTEGER,
     email: DataTypes.STRING,
     is_validate: DataTypes.BOOLEAN,
-    expiration_time : DataTypes.DATE
+    expiration_time: DataTypes.DATE,
   },
   {}
 );
 
-DBSync()
-
-module.exports = { OTPValidate }
+module.exports = { OTPValidate };

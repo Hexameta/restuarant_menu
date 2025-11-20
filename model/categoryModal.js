@@ -1,5 +1,5 @@
 const { DataTypes } = require("sequelize");
-const { DBConn, DBSync } = require("../config/mysqlSequelize.js");
+const { DBConn } = require("../config/postgresSequelize.js");
 const { Branch } = require("./resturantModel.js");
 
 const Category = DBConn.define(
@@ -20,7 +20,5 @@ const Category = DBConn.define(
 );
 
 Category.belongsTo(Branch, { foreignKey: "branch_id" });
-
-DBSync();
 
 module.exports = { Category };
