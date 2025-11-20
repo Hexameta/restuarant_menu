@@ -1,5 +1,5 @@
 const { DataTypes } = require("sequelize");
-const { DBConn, DBSync } = require("../config/mysqlSequelize.js");
+const { DBConn } = require("../config/postgresSequelize");
 
 const Ads = DBConn.define(
   "ads",
@@ -18,11 +18,9 @@ const Ads = DBConn.define(
     valid_from: DataTypes.DATE,
     valid_to: DataTypes.DATE,
     imageUrl: DataTypes.STRING,
-    isAdmin: DataTypes.BOOLEAN
+    isAdmin: DataTypes.BOOLEAN,
   },
   {}
 );
-
-DBSync();
 
 module.exports = { Ads };

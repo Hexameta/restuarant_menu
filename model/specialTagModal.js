@@ -1,5 +1,5 @@
 const { DataTypes } = require("sequelize");
-const { DBConn, DBSync } = require("../config/mysqlSequelize.js");
+const { DBConn } = require("../config/postgresSequelize.js");
 const { Branch } = require("./resturantModel.js");
 const { MenuItem } = require("./menuItemModal.js");
 
@@ -36,7 +36,5 @@ const SpecialTagItem = DBConn.define(
 SpecialTag.belongsTo(Branch, { foreignKey: "branch_id" });
 SpecialTagItem.belongsTo(SpecialTag, { foreignKey: "special_tag_id" });
 SpecialTagItem.belongsTo(MenuItem, { foreignKey: "menu_item_id" });
-
-DBSync();
 
 module.exports = { SpecialTag, SpecialTagItem };
