@@ -1,7 +1,7 @@
 const { DataTypes } = require("sequelize");
 const { DBConn } = require("../config/postgresSequelize.js");
 const { Branch } = require("./resturantModel.js");
-const { MenuItem } = require("./menuItemModal.js");
+const { MenuItem } = require("./menuItemModel.js");
 
 const SpecialTag = DBConn.define(
   "special_tags",

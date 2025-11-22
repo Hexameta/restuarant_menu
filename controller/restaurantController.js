@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 // const { Restaurant, Branch, User, OTPValidate } = require("../model");
 
 const { User } = require("../model/userModel");
-const { OTPValidate } = require("../model/otpValidateModal");
+const { OTPValidate } = require("../model/otpValidateModel");
 const { Restaurant } = require("../model/resturantModel");
 const {
   signupValidator,

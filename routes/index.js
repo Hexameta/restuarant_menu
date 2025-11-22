@@ -1,9 +1,9 @@
 var express = require('express');
 const { Branch } = require('../model/resturantModel');
-const { Category } = require('../model/categoryModal');
-const { MenuItem } = require('../model/menuItemModal');
-const { OTPValidate } = require('../model/otpValidateModal');
-const { SpecialTag, SpecialTagItem } = require('../model/specialTagModal');
+const { Category } = require('../model/categoryModel');
+const { MenuItem } = require('../model/menuItemModel');
+const { OTPValidate } = require('../model/otpValidateModel');
+const { SpecialTag, SpecialTagItem } = require('../model/specialTagModel');
 const { User } = require('../model/userModel');
 const { Ads } = require('../model/adsModal');
 

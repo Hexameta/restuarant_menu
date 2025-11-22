@@ -1,6 +1,6 @@
 const { DataTypes } = require("sequelize");
 const { DBConn } = require("../config/postgresSequelize.js");
-const { Category } = require("./categoryModal.js");
+const { Category } = require("./categoryModel.js");
 
 const MenuItem = DBConn.define(
   "menu_item",
