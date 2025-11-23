@@ -2,7 +2,7 @@ const multer = require("multer");
 const sharp = require("sharp");
 const { createClient } = require("@supabase/supabase-js");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
-
+const {checkImageExistsDB} = require("../controller/categoryController");
 // =============================
 // SUPABASE CLIENT
 // =============================
@@ -107,7 +107,7 @@ const uploadImage = async (req, res) => {
 
 const deleteImage = async (req, res) => {
   try {
-    const { fileName } = req.body;
+    const { fileName, tableName, id } = req.body;
 
     if (!fileName) {
       return res.status(400).json({
@@ -115,7 +115,18 @@ const deleteImage = async (req, res) => {
         message: "fileName is required",
       });
     }
-
+    if(tableName){
+     let response = null
+      if(tableName == "category"){
+      response = await checkImageExistsDB(fileName,id)
+      }
+     if(response?.exists){
+       return res.status(200).json({
+      success: true,
+      message: "It's a Shared Image, removed successfully",
+    });
+     }
+    }
     const { error } = await supabase.storage
       .from(process.env.SUPABASE_BUCKET)
       .remove([fileName]);

@@ -201,6 +201,41 @@ const searchCategory = async (req, res) => {
 };
 
 
+const checkImageExistsDB = async (fileName, id = null) => {
+  try {
+    if (!fileName) {
+      return { success: false, exists: false };
+    }
+
+    const whereCondition = {
+      image_url: fileName,
+    };
+
+    // If editing — exclude the current category
+    if (id) {
+      whereCondition.id = { [Op.ne]: id };  // id != this record
+    }
+
+    const exists = await Category.findOne({
+      where: whereCondition,
+    });
+
+    return {
+      success: true,
+      exists: !!exists,
+    };
+
+  } catch (error) {
+    console.log("Check Image in DB Error:", error);
+    return {
+      success: false,
+      exists: false,
+      error,
+    };
+  }
+};
+
+
 
 module.exports = {
   createCategory,
@@ -208,5 +243,6 @@ module.exports = {
   getCategoryById,
   updateCategory,
   deleteCategory,
-  searchCategory
+  searchCategory,
+  checkImageExistsDB
 };
