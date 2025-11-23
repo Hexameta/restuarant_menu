@@ -46,6 +46,10 @@ const Branch = DBConn.define(
       values: ["active", "pending", "inactive", "block"],
       defaultValue: "pending",
     },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true
+    }
   },
   {}
 );
@@ -67,6 +71,9 @@ const Settings = DBConn.define(
       type: DataTypes.ENUM,
       values: ["left", "right"],
     },
+    facebook_url: DataTypes.STRING,
+    instagram_url: DataTypes.STRING,
+    google_feedback_url: DataTypes.STRING,
   },
   {}
 );

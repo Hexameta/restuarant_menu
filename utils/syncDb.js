@@ -1,10 +1,10 @@
 const { DBConn } = require("../config/postgresSequelize");
 const { Ads } = require("../model/adsModal");
-const { Category } = require("../model/categoryModal");
-const { MenuItem } = require("../model/menuItemModal");
-const { OTPValidate } = require("../model/otpValidateModal");
+const { Category } = require("../model/categoryModel");
+const { MenuItem } = require("../model/menuItemModel");
+const { OTPValidate } = require("../model/otpValidateModel");
 const { Restaurant, Branch, Settings } = require("../model/resturantModel");
-const { SpecialTag, SpecialTagItem } = require("../model/specialTagModal");
+const { SpecialTag, SpecialTagItem } = require("../model/specialTagModel");
 const { User } = require("../model/userModel");
 
 const syncDatabase = async () => {
