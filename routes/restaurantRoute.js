@@ -1,32 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const {
-  signup,
-  verifyOTP,
-  verifyOTPComplete,
+  searchRestaurants,
+  createBranch,
 } = require("../controller/restaurantController");
 
-/**
- * @route   POST /api/restaurants/signup
- * @desc    Register new restaurant/branch and send OTP
- * @access  Public
- */
-router.post("/signup", signup);
+router.get("/search", searchRestaurants);
 
-/**
- * @route   POST /api/restaurants/verify-otp
- * @desc    Verify OTP and complete registration
- * @access  Public
- * @note    Use /verify-otp-complete instead - this requires session management
- */
-router.post("/verify-otp", verifyOTP);
-
-/**
- * @route   POST /api/restaurants/verify-otp-complete
- * @desc    Verify OTP with complete registration data
- * @access  Public
- * @note    Recommended approach - send full data with OTP
- */
-router.post("/verify-otp-complete", verifyOTPComplete);
+router.post("/create", createBranch);
 
 module.exports = router;
