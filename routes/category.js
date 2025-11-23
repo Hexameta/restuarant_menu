@@ -10,10 +10,10 @@ const {
 } = require("../controller/categoryController");
 
 router.post("/", createCategory);
+router.get("/search/:branch_id?", searchCategory); 
 router.get("/:branch_id", getCategories);
 router.get("/single/:id", getCategoryById);
 router.put("/:id", updateCategory);
 router.delete("/:id", deleteCategory);
-router.get("/search/:branch_id", searchCategory);
 
 module.exports = router;

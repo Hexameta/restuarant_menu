@@ -51,21 +51,31 @@ const createCategory = async (req, res) => {
 const getCategories = async (req, res) => {
   try {
     const { branch_id } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
 
-    const categories = await Category.findAll({
+    const { rows, count } = await Category.findAndCountAll({
       where: { branch_id },
+      limit,
+      offset,
       order: [["display_order", "ASC"]],
     });
 
     return res.status(200).json({
       success: true,
-      data: categories,
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        totalPages: Math.ceil(count / limit),
+      },
     });
   } catch (error) {
-    console.log("Get Categories Error:", error);
     return res.status(500).json(errorHandler(error));
   }
 };
+
 
 // =============================
 // GET SINGLE CATEGORY
@@ -157,20 +167,24 @@ const deleteCategory = async (req, res) => {
 
 const searchCategory = async (req, res) => {
   try {
-    const { branch_id } = req.params;
-    const { q } = req.query;
+    const branch_id = req.params.branch_id || null;
+    const q = req.query.q || "";
 
     if (!q || q.trim() === "") {
       return res.status(200).json({ success: true, data: [] });
     }
 
+    // ----- BUILD WHERE CONDITION SAFELY -----
+    const whereCondition = {
+      name: { [Op.iLike]: `%${q}%` },
+    };
+
+    if (branch_id) {
+      whereCondition.branch_id = branch_id;
+    }
+
     const categories = await Category.findAll({
-      where: {
-        branch_id,
-        name: {
-          [Op.iLike]: `%${q}%`,
-        },
-      },
+      where: whereCondition,
       order: [["name", "ASC"]],
       limit: 10,
     });
@@ -179,11 +193,13 @@ const searchCategory = async (req, res) => {
       success: true,
       data: categories,
     });
+
   } catch (error) {
     console.error("Search Category Error:", error);
     return res.status(500).json(errorHandler(error));
   }
 };
+
 
 
 module.exports = {
