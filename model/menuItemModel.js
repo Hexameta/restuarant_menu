@@ -20,7 +20,7 @@ const MenuItem = DBConn.define(
     special_note: DataTypes.TEXT, //give place holder . eg: containe pork .
     tag: {
       type: DataTypes.ENUM,
-      values: ["veg","non veg", "cool", "hot"],
+      values: ["veg","non-veg", "cool", "hot"],
     },
   },
   {}
