@@ -17,10 +17,10 @@ const MenuItem = DBConn.define(
     price: DataTypes.DECIMAL,
     offer_price: DataTypes.DECIMAL,
     is_available: DataTypes.BOOLEAN,
-    special_note: DataTypes.TEXT, //give place holder .
+    special_note: DataTypes.TEXT, //give place holder . eg: containe pork .
     tag: {
       type: DataTypes.ENUM,
-      values: ["veg,non veg", "cool", "hot"],
+      values: ["veg","non veg", "cool", "hot"],
     },
   },
   {}

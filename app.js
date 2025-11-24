@@ -4,14 +4,16 @@ var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 var cors = require("cors");
-
+var syncDatabase = require("./utils/syncDb.js")
 var indexRouter = require("./routes/index.js");
 var usersRouter = require("./routes/users.js");
 var restaurantRouter = require("./routes/restaurantRoute");
 var categoryRouter = require("./routes/category.js");
 var imageUploadRouter = require("./routes/imageUpload.js");
-var app = express();
+var menuItemRouter = require("./routes/menuItemRoute.js");
 
+var app = express();
+syncDatabase();
 // view engine setup
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
@@ -36,6 +38,7 @@ app.use("/api/v1/users", usersRouter);
 app.use("/api/v1/restaurant", restaurantRouter);
 app.use("/api/v1/category", categoryRouter)
 app.use("/api/v1/image-upload", imageUploadRouter)
+app.use("/api/v1/menu-item", menuItemRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

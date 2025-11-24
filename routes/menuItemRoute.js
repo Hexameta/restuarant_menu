@@ -1,0 +1,22 @@
+const express = require("express");
+const router = express.Router();
+
+const {
+  createMenuItem,
+  getMenuItems,
+  getItemsByCategory,
+  getMenuItemById,
+  updateMenuItem,
+  deleteMenuItem,
+  searchMenuItem,
+} = require("../controller/menuItemController");
+
+router.post("/", createMenuItem);
+router.get("/", getMenuItems);
+router.get("/by-category/:category_id", getItemsByCategory);
+router.get("/single/:id", getMenuItemById);
+router.put("/:id", updateMenuItem);
+router.delete("/:id", deleteMenuItem);
+router.get("/search/:branch_id?", searchMenuItem);
+
+module.exports = router;
