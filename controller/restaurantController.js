@@ -50,21 +50,17 @@ const createBranch = async (req, res) => {
       // Restaurant details (if creating new)
       restaurant_name,
       restaurant_email,
-      restaurant_phone,
       restaurant_type,
       restaurant_logo,
 
       // Branch details
       branch_name,
-      branch_phone,
+      phone,
       country,
       state,
       district,
       city,
       place,
-
-      email,
-
       // Settings details
       currency,
       symbol,
@@ -99,7 +95,7 @@ const createBranch = async (req, res) => {
         {
           name: restaurant_name,
           email: restaurant_email,
-          phone: restaurant_phone,
+          phone: phone,
           type: restaurant_type,
           logo: restaurant_logo,
           status: "inactive", // Default as per requirement
@@ -132,8 +128,8 @@ const createBranch = async (req, res) => {
       {
         restaurant_id: finalRestaurantId,
         name: branch_name,
-        phone: branch_phone,
-        email,
+        phone: phone,
+
         country,
         state,
         district,
