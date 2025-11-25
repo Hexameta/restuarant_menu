@@ -26,6 +26,22 @@ const createCategory = async (req, res) => {
       });
     }
 
+        // Case-insensitive category check
+    const exists = await Category.findOne({
+      where: {
+        branch_id,
+        name: { [Op.iLike]: name.trim() }   // matches "Pizza" and "pizza"
+      }
+    });
+
+    if (exists) {
+      return res.status(400).json({
+        success: false,
+        message: `Category "${name}" already exists in this branch`,
+      });
+    }
+
+
     const category = await Category.create({
       branch_id,
       name,
@@ -108,6 +124,7 @@ const getCategoryById = async (req, res) => {
 const updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
+    const { name, image_url, is_active, display_order } = req.body;
 
     const category = await Category.findByPk(id);
     if (!category) {
@@ -117,10 +134,26 @@ const updateCategory = async (req, res) => {
       });
     }
 
-    const { name, image_url, is_active, display_order } = req.body;
+    // If user changed the name → check for duplicates
+    if (name && name.trim().toLowerCase() !== category.name.toLowerCase()) {
+      const existing = await Category.findOne({
+        where: {
+          branch_id: category.branch_id,
+          name: { [Op.iLike]: name.trim() },
+          id: { [Op.ne]: id }, // exclude current id
+        },
+      });
+
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: `Another category with name "${name}" already exists`,
+        });
+      }
+    }
 
     await category.update({
-      name: name ?? category.name,
+      name: name ? name.trim().replace(/\s+/g, " ") : category.name,
       image_url: image_url ?? category.image_url,
       is_active: is_active ?? category.is_active,
       display_order: display_order ?? category.display_order,
@@ -136,7 +169,6 @@ const updateCategory = async (req, res) => {
     return res.status(500).json(errorHandler(error));
   }
 };
-
 // =============================
 // DELETE CATEGORY (SOFT DELETE)
 // =============================
@@ -201,7 +233,7 @@ const searchCategory = async (req, res) => {
 };
 
 
-const checkImageExistsDB = async (fileName, id = null) => {
+const checkCategoryImageExistsDB = async (fileName, id = null) => {
   try {
     if (!fileName) {
       return { success: false, exists: false };
@@ -269,6 +301,6 @@ module.exports = {
   updateCategory,
   deleteCategory,
   searchCategory,
-  checkImageExistsDB,
+  checkCategoryImageExistsDB,
   reOrderCategory
 };

@@ -36,6 +36,21 @@ const createMenuItem = async (req, res) => {
       });
     }
 
+     const exists = await MenuItem.findOne({
+      where: {
+        category_id,
+        name: { [Op.iLike]: name.trim() }
+      }
+    });
+
+    if (exists) {
+      return res.status(409).json({
+        success: false,
+        message: "A menu item with this name already exists in this category",
+      });
+    }
+
+
     const item = await MenuItem.create({
       category_id,
       name,
@@ -153,9 +168,27 @@ const updateMenuItem = async (req, res) => {
       });
     }
 
-    const data = req.body;
+    const { category_id, name } = req.body;
 
-    await item.update(data);
+    // Duplicate check only if name is provided
+    if (name && name.trim()) {
+      const exists = await MenuItem.findOne({
+        where: {
+          name: { [Op.iLike]: name.trim() },
+          category_id: category_id ?? item.category_id,
+          id: { [Op.not]: id }, // exclude itself
+        },
+      });
+
+      if (exists) {
+        return res.status(409).json({
+          success: false,
+          message: "Another item with this name already exists in this category",
+        });
+      }
+    }
+
+    await item.update(req.body);
 
     return res.status(200).json({
       success: true,
@@ -200,7 +233,7 @@ const deleteMenuItem = async (req, res) => {
 // =============================
 const searchMenuItem = async (req, res) => {
   try {
-    const { branch_id } = req.params;
+    const { category_id } = req.params;
     const { q } = req.query;
 
     if (!q || q.trim() === "") {
@@ -211,8 +244,8 @@ const searchMenuItem = async (req, res) => {
       name: { [Op.iLike]: `%${q}%` },
     };
 
-    if (branch_id) {
-      whereCondition.branch_id = branch_id;
+    if (category_id) {
+      whereCondition.category_id = category_id;
     }
 
     const items = await MenuItem.findAll({
@@ -228,6 +261,43 @@ const searchMenuItem = async (req, res) => {
   }
 };
 
+
+
+const checkMenuItemImageExistsDB = async (fileName, id = null) => {
+  try {
+    if (!fileName) {
+      return { success: false, exists: false };
+    }
+
+    const whereCondition = {
+      image_url: fileName,
+    };
+
+    // If editing — exclude the current category
+    if (id) {
+      whereCondition.id = { [Op.ne]: id };  // id != this record
+    }
+
+    const exists = await MenuItem.findOne({
+      where: whereCondition,
+    });
+
+    return {
+      success: true,
+      exists: !!exists,
+    };
+
+  } catch (error) {
+    console.log("Check Image in DB Error:", error);
+    return {
+      success: false,
+      exists: false,
+      error,
+    };
+  }
+};
+
+
 module.exports = {
   createMenuItem,
   getMenuItems,
@@ -236,4 +306,5 @@ module.exports = {
   updateMenuItem,
   deleteMenuItem,
   searchMenuItem,
+  checkMenuItemImageExistsDB
 };

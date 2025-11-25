@@ -2,7 +2,8 @@ const multer = require("multer");
 const sharp = require("sharp");
 const { createClient } = require("@supabase/supabase-js");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
-const {checkImageExistsDB} = require("../controller/categoryController");
+const {checkCategoryImageExistsDB} = require("../controller/categoryController");
+const { checkMenuItemImageExistsDB } = require("./menuItemController");
 // =============================
 // SUPABASE CLIENT
 // =============================
@@ -132,7 +133,11 @@ const deleteImage = async (req, res) => {
     if(tableName){
      let response = null
       if(tableName == "category"){
-      response = await checkImageExistsDB(fileName,id)
+      response = await checkCategoryImageExistsDB(fileName,id)
+      }
+      if(tableName == "menu_item"){
+      response = await checkMenuItemImageExistsDB(fileName,id)
+
       }
      if(response?.exists){
        return res.status(200).json({
