@@ -4,7 +4,7 @@ var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 var cors = require("cors");
-var syncDatabase = require("./utils/syncDb.js")
+// var syncDatabase = require("./utils/syncDb.js")
 var indexRouter = require("./routes/index.js");
 var usersRouter = require("./routes/users.js");
 var restaurantRouter = require("./routes/restaurantRoute");
@@ -13,7 +13,7 @@ var imageUploadRouter = require("./routes/imageUpload.js");
 var menuItemRouter = require("./routes/menuItemRoute.js");
 
 var app = express();
-syncDatabase();
+// syncDatabase();
 // view engine setup
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");

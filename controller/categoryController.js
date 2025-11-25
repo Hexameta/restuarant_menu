@@ -237,6 +237,31 @@ const checkImageExistsDB = async (fileName, id = null) => {
 
 
 
+const reOrderCategory = async (req, res) => {
+  try {
+    const { orderedIds } = req.body; // e.g. [5, 3, 9, 1, 4]
+
+    if (!Array.isArray(orderedIds)) {
+      return res.status(400).json({ success: false, message: "orderedIds must be array" });
+    }
+
+    for (let index = 0; index < orderedIds.length; index++) {
+      await Category.update(
+        { display_order: index },
+        { where: { id: orderedIds[index] } }
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Category priority updated",
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+}
+
 module.exports = {
   createCategory,
   getCategories,
@@ -244,5 +269,6 @@ module.exports = {
   updateCategory,
   deleteCategory,
   searchCategory,
-  checkImageExistsDB
+  checkImageExistsDB,
+  reOrderCategory
 };
