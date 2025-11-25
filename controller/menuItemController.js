@@ -84,8 +84,29 @@ const getMenuItems = async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
 
+    const { category_id, branch_id } = req.query;
+
+    const whereCondition = {};
+    const categoryCondition = {};
+
+    // 🟦 FILTER: CATEGORY
+    if (category_id) {
+      whereCondition.category_id = category_id;
+    }
+
+    // 🟥 FILTER: BRANCH
+    if (branch_id) {
+      categoryCondition.branch_id = branch_id;
+    }
+
     const { rows, count } = await MenuItem.findAndCountAll({
-      include: [{ model: Category }],
+      where: whereCondition,
+      include: [
+        {
+          model: Category,
+          where: categoryCondition, // applied only if branch_id provided
+        }
+      ],
       limit,
       offset,
       order: [["id", "DESC"]],
@@ -105,6 +126,7 @@ const getMenuItems = async (req, res) => {
     return res.status(500).json(errorHandler(error));
   }
 };
+
 
 // =============================
 // GET ITEMS BY CATEGORY ID
