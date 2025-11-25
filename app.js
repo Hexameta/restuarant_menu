@@ -11,7 +11,7 @@ var restaurantRouter = require("./routes/restaurantRoute");
 var categoryRouter = require("./routes/category.js");
 var imageUploadRouter = require("./routes/imageUpload.js");
 var menuItemRouter = require("./routes/menuItemRoute.js");
-
+var specialTagRouter = require("./routes/specialTagRoutes.js")
 var app = express();
 // syncDatabase();
 // view engine setup
@@ -39,6 +39,7 @@ app.use("/api/v1/restaurant", restaurantRouter);
 app.use("/api/v1/category", categoryRouter)
 app.use("/api/v1/image-upload", imageUploadRouter)
 app.use("/api/v1/menu-item", menuItemRouter);
+app.use("/api/v1/special-tag",specialTagRouter)
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
