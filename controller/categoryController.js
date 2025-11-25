@@ -30,6 +30,7 @@ const createCategory = async (req, res) => {
     const exists = await Category.findOne({
       where: {
         branch_id,
+        is_active: true,
         name: { [Op.iLike]: name.trim() }   // matches "Pizza" and "pizza"
       }
     });
@@ -72,7 +73,7 @@ const getCategories = async (req, res) => {
     const offset = (page - 1) * limit;
 
     const { rows, count } = await Category.findAndCountAll({
-      where: { branch_id },
+      where: { branch_id, is_active: true },
       limit,
       offset,
       order: [["display_order", "ASC"]],
@@ -139,6 +140,7 @@ const updateCategory = async (req, res) => {
       const existing = await Category.findOne({
         where: {
           branch_id: category.branch_id,
+           is_active: true,
           name: { [Op.iLike]: name.trim() },
           id: { [Op.ne]: id }, // exclude current id
         },
@@ -209,6 +211,7 @@ const searchCategory = async (req, res) => {
     // ----- BUILD WHERE CONDITION SAFELY -----
     const whereCondition = {
       name: { [Op.iLike]: `%${q}%` },
+       is_active: true,
     };
 
     if (branch_id) {

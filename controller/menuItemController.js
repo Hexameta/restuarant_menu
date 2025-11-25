@@ -215,13 +215,24 @@ const deleteMenuItem = async (req, res) => {
         message: "Menu item not found",
       });
     }
+    const fileName = item.image_url;
+   await item.destroy(); // ❗ actual delete
 
-    await item.destroy(); // ❗ actual delete
-
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Menu item deleted successfully",
     });
+
+     if (fileName) {
+  checkMenuItemImageExistsDB(fileName).then((exists) => {
+    if (!exists?.exists) {
+      const { deleteImageDirectly } = require("./ImageController");
+      deleteImageDirectly(fileName).catch((err) =>
+        console.error("Failed to delete image in background:", err)
+      );
+    }
+  });
+}
 
   } catch (error) {
     return res.status(500).json(errorHandler(error));

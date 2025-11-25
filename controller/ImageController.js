@@ -169,8 +169,19 @@ const deleteImage = async (req, res) => {
 };
 
 
+async function deleteImageDirectly(fileName) {
+  if (!fileName) return;
+  supabase.storage
+    .from(process.env.SUPABASE_BUCKET)
+    .remove([fileName])
+    .then(() => console.log("✔ Image deleted in background:", fileName))
+    .catch(err => console.log("❗ Async delete failed:", err.message));
+}
+
+
 module.exports = {
   upload,
   uploadImage,
-  deleteImage
+  deleteImage,
+  deleteImageDirectly
 };
