@@ -59,23 +59,37 @@ const uploadImage = async (req, res) => {
       });
     }
 
-    let finalBuffer = file.buffer;
+    // Convert to webp buffer
+    let buffer = await sharp(file.buffer)
+      .webp({ quality: 85 })
+      .toBuffer();
 
-    // Only compress if >3MB
-    if (file.size > 3 * 1024 * 1024) {
-      finalBuffer = await compressUntilTarget(file.buffer);
+    // If still above 2MB → further compress
+    if (buffer.length > 2 * 1024 * 1024) {
+      buffer = await sharp(file.buffer)
+        .resize({ width: 1800 })
+        .webp({ quality: 70 })
+        .toBuffer();
     }
 
-    // Generate unique filename
-    const timestamp = Date.now();
-    const fileName = `${timestamp}-${file.originalname}`;
+    // Final safety
+    if (buffer.length > 2 * 1024 * 1024) {
+      buffer = await sharp(file.buffer)
+        .resize({ width: 1400 })
+        .webp({ quality: 60 })
+        .toBuffer();
+    }
 
-    // Upload to Supabase
+    // Generate unique filename — MAKE IT WEBP
+    const timestamp = Date.now();
+    const fileName = `${timestamp}-${file.originalname}.webp`
+      .replace(/\.jpg|\.jpeg|\.png|\.gif|\.webp/gi, ".webp");
+
     const { error } = await supabase.storage
       .from(process.env.SUPABASE_BUCKET)
-      .upload(fileName, finalBuffer, {
+      .upload(fileName, buffer, {
         upsert: true,
-        contentType: file.mimetype,
+        contentType: "image/webp",
       });
 
     if (error) {
@@ -86,7 +100,6 @@ const uploadImage = async (req, res) => {
       });
     }
 
-    // Get public URL
     const { data: publicData } = supabase.storage
       .from(process.env.SUPABASE_BUCKET)
       .getPublicUrl(fileName);
@@ -95,9 +108,10 @@ const uploadImage = async (req, res) => {
       success: true,
       message: "Image uploaded successfully",
       url: publicData.publicUrl,
-      sizeKB: Math.round(finalBuffer.length / 1024),
+      sizeKB: Math.round(buffer.length / 1024),
       fileName,
     });
+
   } catch (error) {
     console.log("Upload Image Error:", error);
     return res.status(500).json(errorHandler(error));
