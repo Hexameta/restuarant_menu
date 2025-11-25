@@ -56,7 +56,7 @@ const getAds = async (req, res) => {
     const offset = (page - 1) * limit;
 
     const { count, rows } = await Ads.findAndCountAll({
-      where: { branch_id },
+      where: { branch_id,isAdmin:false,isExpired:false },
       limit,
       offset,
       order: [["id", "DESC"]],
