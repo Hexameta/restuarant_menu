@@ -11,6 +11,10 @@ const { Op } = require("sequelize");
 const searchRestaurants = async (req, res) => {
   try {
     const { search } = req.query;
+
+    if (search === "") {
+      return sendResponse(res, 200, "Restaurants fetched successfully", []);
+    }
     let whereClause = {};
 
     if (search) {
@@ -20,7 +24,7 @@ const searchRestaurants = async (req, res) => {
     }
 
     const restaurants = await Restaurant.findAll({
-      attributes: ["id", "name"],
+      attributes: ["id", "name","logo"],
       where: whereClause,
     });
 
