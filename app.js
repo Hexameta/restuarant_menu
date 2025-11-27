@@ -4,7 +4,7 @@ var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 var cors = require("cors");
-// var syncDatabase = require("./utils/syncDb.js")
+var {syncDatabase} = require("./utils/syncDb.js")
 var indexRouter = require("./routes/index.js");
 var usersRouter = require("./routes/users.js");
 var restaurantRouter = require("./routes/restaurantRoute");
@@ -12,6 +12,7 @@ var categoryRouter = require("./routes/category.js");
 var imageUploadRouter = require("./routes/imageUpload.js");
 var menuItemRouter = require("./routes/menuItemRoute.js");
 var specialTagRouter = require("./routes/specialTagRoutes.js")
+var menuRouter = require("./routes/menu.js")
 var app = express();
 // syncDatabase();
 // view engine setup
@@ -27,7 +28,7 @@ app.use(express.static(path.join(__dirname, "public")));
 // Enable CORS for development frontend on port 5173 (Vite)
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    origin: ["http://localhost:5173", "http://127.0.0.1:5173","http://localhost:5174", "http://127.0.0.1:5174"],
     credentials: true,
   })
 );
@@ -40,6 +41,7 @@ app.use("/api/v1/category", categoryRouter)
 app.use("/api/v1/image-upload", imageUploadRouter)
 app.use("/api/v1/menu-item", menuItemRouter);
 app.use("/api/v1/special-tag",specialTagRouter)
+app.use("/api/v1/menu",menuRouter)
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

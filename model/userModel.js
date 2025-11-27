@@ -19,5 +19,6 @@ const User = DBConn.define(
 );
 
 User.belongsTo(Branch, { foreignKey: "branch_id" });
+Branch.hasMany(User, { foreignKey: "branch_id" });
 
 module.exports = { User };

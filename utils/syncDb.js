@@ -9,7 +9,7 @@ const syncDatabase = async () => {
     // await DBConn.query("DROP TYPE IF EXISTS enum_special_tag_item_tag;")
     // await DBConn.query("DROP TYPE IF EXISTS enum_menu_item_tag;")
 
-    await DBConn.sync({ alter: true, logging: console.log });
+    await DBConn.sync({ force: true, logging: console.log });
     console.log("✅ Database synchronized successfully.");
     process.exit(0);
   } catch (error) {
@@ -18,6 +18,4 @@ const syncDatabase = async () => {
   }
 };
 
-syncDatabase();
-
-module.exports = syncDatabase;
+module.exports = {syncDatabase};

@@ -15,10 +15,11 @@ const Ads = DBConn.define(
       type: DataTypes.ENUM,
       values: ["carousel", "banner"],
     },
+    is_expired: DataTypes.BOOLEAN,
     valid_from: DataTypes.DATE,
     valid_to: DataTypes.DATE,
-    imageUrl: DataTypes.STRING,
-    isAdmin: DataTypes.BOOLEAN,
+    image_url: DataTypes.STRING,
+    is_admin: DataTypes.BOOLEAN,
   },
   {}
 );
