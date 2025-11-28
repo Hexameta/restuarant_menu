@@ -83,7 +83,7 @@ const uploadImage = async (req, res) => {
 
     // Generate unique filename — MAKE IT WEBP
     const timestamp = Date.now();
-    const fileName = `${timestamp}-${file.originalname}.webp`
+    const fileName = `${timestamp}-${file.originalname}`
       .replace(/\.jpg|\.jpeg|\.png|\.gif|\.webp/gi, ".webp");
 
     const { error } = await supabase.storage
@@ -168,6 +168,101 @@ const deleteImage = async (req, res) => {
   }
 };
 
+const uploadPdf = async (req, res) => {
+  try {
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        message: "PDF file is required",
+      });
+    }
+
+    const MAX_PDF_SIZE_MB = 5;
+    const MAX_PDF_SIZE_BYTES = MAX_PDF_SIZE_MB * 1024 * 1024; // 5 MB
+
+    if (file.buffer.length > MAX_PDF_SIZE_BYTES) {
+      return res.status(400).json({
+        success: false,
+        message: `PDF file size exceeds the ${MAX_PDF_SIZE_MB}MB limit`,
+      });
+    }
+
+    // PDF compression is more complex than image compression and typically requires
+    // specialized libraries (e.g., 'pdf-lib' for programmatic modifications) or
+    // external services. For this implementation, we will upload the PDF as-is.
+    // If further compression is needed, consider adding a specific PDF processing step here.
+
+    // Generate unique filename, ensuring .pdf extension
+    const timestamp = Date.now();
+    const fileName = `${timestamp}-${file.originalname.replace(/\.[^/.]+$/, "")}.pdf`;
+
+    const { error } = await supabase.storage
+      .from(process.env.SUPABASE_BUCKET)
+      .upload(fileName, file.buffer, {
+        upsert: true,
+        contentType: "application/pdf",
+      });
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        message: "PDF upload failed",
+        error,
+      });
+    }
+
+    const { data: publicData } = supabase.storage
+      .from(process.env.SUPABASE_BUCKET)
+      .getPublicUrl(fileName);
+
+    return res.status(201).json({
+      success: true,
+      message: "PDF uploaded successfully",
+      url: publicData.publicUrl,
+      sizeKB: Math.round(file.buffer.length / 1024),
+      fileName,
+    });
+  } catch (error) {
+    console.log("Upload PDF Error:", error);
+    return res.status(500).json(errorHandler(error));
+  }
+};
+
+const deletePdf = async (req, res) => {
+  try {
+    const { fileName } = req.body;
+
+    if (!fileName) {
+      return res.status(400).json({
+        success: false,
+        message: "fileName is required",
+      });
+    }
+
+    const { error } = await supabase.storage
+      .from(process.env.SUPABASE_BUCKET)
+      .remove([fileName]);
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete PDF",
+        error,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "PDF deleted successfully",
+    });
+  } catch (error) {
+    console.log("Delete PDF Error:", error);
+    return res.status(500).json(errorHandler(error));
+  }
+};
+
 
 async function deleteImageDirectly(fileName) {
   if (!fileName) return;
@@ -183,5 +278,7 @@ module.exports = {
   upload,
   uploadImage,
   deleteImage,
-  deleteImageDirectly
+  deleteImageDirectly,
+  uploadPdf,
+  deletePdf
 };

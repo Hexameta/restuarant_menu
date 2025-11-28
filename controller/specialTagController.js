@@ -170,7 +170,7 @@ const getSpecialTagItems = async (req, res) => {
     const items = await SpecialTagItem.findAll({
       where: { special_tag_id: tag_id },
       include: [
-        { model: MenuItem, attributes: ["id", "name", "image_url"] }
+        { model: MenuItem, as: "menu_item", attributes: ["id", "name", "image_url"] }
       ]
     });
 

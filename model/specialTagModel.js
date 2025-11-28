@@ -34,7 +34,21 @@ const SpecialTagItem = DBConn.define(
 );
 
 SpecialTag.belongsTo(Branch, { foreignKey: "branch_id" });
+Branch.hasMany(SpecialTag, { foreignKey: "branch_id" });
+
 SpecialTagItem.belongsTo(SpecialTag, { foreignKey: "special_tag_id" });
-SpecialTagItem.belongsTo(MenuItem, { foreignKey: "menu_item_id" });
+SpecialTag.hasMany(SpecialTagItem, { foreignKey: "special_tag_id",as: "special_items" });
+
+// MenuItem.belongsTo(SpecialTagItem, { foreignKey: "menu_item_id" });
+// SpecialTagItem.hasOne(MenuItem, { foreignKey: "menu_item_id" });
+
+SpecialTagItem.belongsTo(MenuItem, {
+  foreignKey: "menu_item_id",
+  as: "menu_item"
+});
+
+MenuItem.hasMany(SpecialTagItem, {
+  foreignKey: "menu_item_id"
+});
 
 module.exports = { SpecialTag, SpecialTagItem };

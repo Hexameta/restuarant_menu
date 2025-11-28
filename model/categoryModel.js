@@ -20,5 +20,6 @@ const Category = DBConn.define(
 );
 
 Category.belongsTo(Branch, { foreignKey: "branch_id" });
+Branch.hasMany(Category, { foreignKey: "branch_id" });
 
 module.exports = { Category };

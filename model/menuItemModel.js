@@ -27,5 +27,6 @@ const MenuItem = DBConn.define(
 );
 
 MenuItem.belongsTo(Category, { foreignKey: "category_id" });
+Category.hasMany(MenuItem, { foreignKey: "category_id" });
 
 module.exports = { MenuItem };
