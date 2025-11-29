@@ -14,7 +14,7 @@ const createAd = async (req, res) => {
       valid_from,
       valid_to,
       imageUrl,
-      isAdmin,
+      is_admin,
     } = req.body;
 
     if (!branch_id || !imageUrl || !ad_type) {
@@ -31,7 +31,7 @@ const createAd = async (req, res) => {
       valid_from,
       valid_to,
       imageUrl,
-      isAdmin: isAdmin || false,
+      is_admin: is_admin || false,
     });
 
     return res.status(201).json({
@@ -56,7 +56,7 @@ const getAds = async (req, res) => {
     const offset = (page - 1) * limit;
 
     const { count, rows } = await Ads.findAndCountAll({
-      where: { branch_id,isAdmin:false,isExpired:false },
+      where: { branch_id,is_admin:false,isExpired:false },
       limit,
       offset,
       order: [["id", "DESC"]],
@@ -152,10 +152,46 @@ const deleteAd = async (req, res) => {
     return res.status(500).json(errorHandler(error));
   }
 };
+
+
+const checkAdsImageExistsDB = async (fileName, id = null) => {
+  try {
+    if (!fileName) {
+      return { success: false, exists: false };
+    }
+
+    const whereCondition = {
+      imageUrl: fileName,
+    };
+
+    // If editing — exclude the current category
+    if (id) {
+      whereCondition.id = { [Op.ne]: id };  // id != this record
+    }
+
+    const exists = await ad.findOne({
+      where: whereCondition,
+    });
+
+    return {
+      success: true,
+      exists: !!exists,
+    };
+
+  } catch (error) {
+    console.log("Check Image in DB Error:", error);
+    return {
+      success: false,
+      exists: false,
+      error,
+    };
+  }
+};
 module.exports = {
   createAd,
   getAds,
   updateAd,
   deleteAd,
-  getActiveAds
+  getActiveAds,
+  checkAdsImageExistsDB
 };
