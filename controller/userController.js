@@ -79,6 +79,45 @@ const checkUser = async (req, res) => {
   }
 };
 
+
+const signin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return sendResponse(res, 400, "Email and password are required");
+    }
+
+    const user = await User.findOne({ where: { email: email } });
+
+    if (!user) {
+      return sendResponse(res, 404, "User not found");
+    }
+
+    const isMatch = await bcrypt.compare(password, user.Password);
+
+    if (!isMatch) {
+      return sendResponse(res, 401, "Invalid password");
+    }
+
+    return sendResponse(res, 200, "User signed in successfully", {
+      user: {
+        branch_id : user.branch_id,
+        email : user.email,
+        username : user.username,
+        id : user.id
+      },
+      redirect: user.branch_id ? "/dashboard" : "/registration",
+      success: true
+    });
+  } catch (error) {
+    console.error("Error in signin:", error);
+    return sendResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
+  }
+};
+
 const verifyOTPAndRegister = async (req, res) => {
   try {
     const { otpId, otp, email, password } = req.body;
@@ -143,4 +182,5 @@ const verifyOTPAndRegister = async (req, res) => {
 module.exports = {
   checkUser,
   verifyOTPAndRegister,
+  signin
 };
