@@ -47,6 +47,7 @@ const searchRestaurants = async (req, res) => {
  * Creates a branch and optionally a restaurant if it doesn't exist
  */
 const createBranch = async (req, res) => {
+  const { userId } = req.params;
   const transaction = await Restaurant.sequelize.transaction();
   try {
     const {
@@ -162,6 +163,16 @@ const createBranch = async (req, res) => {
       { transaction }
     );
 
+    await user.update(
+      { branch_id: newBranch.id },
+      {
+        where: {
+          id: userId,
+        },
+      },
+      { transaction }
+    );
+
     await transaction.commit();
 
     return sendResponse(res, 201, "Branch created successfully", {
@@ -177,8 +188,39 @@ const createBranch = async (req, res) => {
     });
   }
 };
+const getResturantById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const restaurant = await Branch.findOne({
+      where: {
+        id: id,
+      },
+    });
+    const settings = await Settings.findOne({
+      where: {
+        branch_id: restaurant.id,
+      },
+    });
+    if (!restaurant) {
+      return sendResponse(res, 404, "Restaurant not found");
+    }
+    if (!settings) {
+      return sendResponse(res, 404, "Settings not found");
+    }
+    return sendResponse(res, 200, "Restaurant fetched successfully", {
+      restaurant,
+      settings,
+    });
+  } catch (error) {
+    console.error("Get restaurant error:", error);
+    return sendResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
+  }
+};
 
 module.exports = {
   searchRestaurants,
   createBranch,
+  getResturantById
 };
