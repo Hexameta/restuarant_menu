@@ -76,13 +76,6 @@ const getCategoriesbyIdForMenu = async (req, res) => {
             },
         });
 
-        if (!category) {
-            return res.status(404).json({
-                success: false,
-                message: "Category not found for this branch",
-            });
-        }
-
         return res.status(200).json({
             success: true,
             data: category,
@@ -117,13 +110,6 @@ const getMenuItemsByBranchIdForMenu = async (req, res) => {
                 attributes: []
             }]
         });
-
-        if (!menuItems || menuItems.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "No menu items found for this branch",
-            });
-        }
 
         return res.status(200).json({
             success: true,
@@ -166,14 +152,6 @@ const getSpecialMenuItemsByBranchId = async (req, res) => {
         });
 
 
-        if (!specialMenuItems || specialMenuItems.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "No special menu items found for this branch",
-            });
-        }
-
-
         const finalData = specialMenuItems.map(tag => ({
             id: tag.id,
             title: tag.title,
@@ -209,13 +187,6 @@ const getCarasoulByBranchId = async (req, res) => {
                 branch_id: branchId
             }
         });
-
-        if (!carasoulMenuItems || carasoulMenuItems.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "No carasoul menu items found for this branch",
-            });
-        }
 
         return res.status(200).json({
             success: true,

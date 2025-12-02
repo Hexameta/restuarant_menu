@@ -18,7 +18,7 @@ const Ads = DBConn.define(
     is_expired: DataTypes.BOOLEAN,
     valid_from: DataTypes.DATE,
     valid_to: DataTypes.DATE,
-    imageUrl: DataTypes.STRING,
+    image_url: DataTypes.STRING,
     is_admin: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,

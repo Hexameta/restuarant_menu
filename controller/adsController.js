@@ -13,11 +13,11 @@ const createAd = async (req, res) => {
       ad_type,
       valid_from,
       valid_to,
-      imageUrl,
+      image_url,
       is_admin,
     } = req.body;
 
-    if (!branch_id || !imageUrl || !ad_type) {
+    if (!branch_id || !image_url || !ad_type) {
       return res.status(400).json({
         success: false,
         message: "branch_id, imageUrl, ad_type are required",
@@ -30,7 +30,7 @@ const createAd = async (req, res) => {
       ad_type,
       valid_from,
       valid_to,
-      imageUrl,
+      image_url,
       is_admin: is_admin || false,
     });
 
@@ -56,7 +56,7 @@ const getAds = async (req, res) => {
     const offset = (page - 1) * limit;
 
     const { count, rows } = await Ads.findAndCountAll({
-      where: { branch_id,is_admin:false,isExpired:false },
+      where: { branch_id,is_admin:false,is_expired:false },
       limit,
       offset,
       order: [["id", "DESC"]],
