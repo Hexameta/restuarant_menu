@@ -5,6 +5,7 @@ var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 var cors = require("cors");
 var { syncDatabase } = require("./utils/syncDb.js");
+const { authMiddleware } = require("./middleware/authMiddleware");
 var indexRouter = require("./routes/index.js");
 var usersRouter = require("./routes/users.js");
 var restaurantRouter = require("./routes/restaurantRoute");
@@ -55,6 +56,8 @@ app.use(
     credentials: true,
   })
 );
+
+app.use(authMiddleware);
 
 app.use("/", indexRouter);
 // app.use('/users', usersRouter);

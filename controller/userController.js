@@ -8,7 +8,7 @@ const {
 } = require("../utils/otpHandler");
 const { sendResponse } = require("../utils/responseHelper");
 const bcrypt = require("bcrypt");
-const { generateToken } = require("../utils/jwtHelper");
+const { generateAccessToken, generateRefreshToken } = require("../utils/jwtHelper");
 
 const checkUser = async (req, res) => {
   try {
@@ -26,10 +26,18 @@ const checkUser = async (req, res) => {
       if (password) {
         const isMatch = await bcrypt.compare(password, user.Password);
         if (isMatch) {
-          const token = generateToken(user);
-          res.cookie("token", token, {
+          const accessToken = generateAccessToken(user);
+          const refreshToken = generateRefreshToken(user);
+          
+          res.cookie("accessToken", accessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production", // Set to true in production
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+          });
+
+          res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
           });
         } else {
@@ -121,11 +129,19 @@ const signin = async (req, res) => {
       return sendResponse(res, 401, "Invalid password");
     }
 
-    const token = generateToken(user);
-    res.cookie("token", token, {
-      // httpOnly: true,
-      // secure: process.env.NODE_ENV === "production",
-      // sameSite: "strict",
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
     });
 
     return sendResponse(res, 200, "User signed in successfully", {
@@ -137,7 +153,7 @@ const signin = async (req, res) => {
       },
       redirect: user.branch_id ? "/dashboard" : "/registration",
       success: true,
-      token: token, // Optional: return token in body too if needed by frontend
+      token: accessToken, // Optional: return token in body too if needed by frontend
     });
   } catch (error) {
     console.error("Error in signin:", error);
@@ -196,8 +212,16 @@ const verifyOTPAndRegister = async (req, res) => {
     // Mark OTP as validated
     await otpRecord.update({ is_validate: true });
 
-    const token = generateToken(newUser);
-    res.cookie("token", token, {
+    const accessToken = generateAccessToken(newUser);
+    const refreshToken = generateRefreshToken(newUser);
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",

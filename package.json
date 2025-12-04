@@ -7,6 +7,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.84.0",
+    "axios": "^1.13.2",
+    "axios-cookiejar-support": "^6.0.5",
     "bcrypt": "^6.0.0",
     "cookie-parser": "~1.4.4",
     "cors": "^2.8.5",
@@ -27,6 +29,7 @@
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",
     "sharp": "^0.34.5",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "tough-cookie": "^6.0.0"
   }
 }

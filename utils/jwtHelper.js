@@ -1,16 +1,33 @@
 const jwt = require("jsonwebtoken");
 
-const SECRET_KEY = process.env.JWT_SECRET || "your_secret_key_here"; // Use env var in production
+const ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || "your_access_secret_key";
+const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || "your_refresh_secret_key";
 
-const generateToken = (user) => {
+const generateAccessToken = (user) => {
   const payload = {
     userId: user.id,
     email: user.email,
     branchId: user.branch_id,
   };
-
-  // Token expires in 1 day
-  return jwt.sign(payload, SECRET_KEY, { expiresIn: "1d" });
+  return jwt.sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: "15m" });
 };
 
-module.exports = { generateToken };
+const generateRefreshToken = (user) => {
+  const payload = {
+    userId: user.id,
+    email: user.email,
+    branchId: user.branch_id,
+  };
+  return jwt.sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
+};
+
+const verifyToken = (token, isRefreshToken = false) => {
+  try {
+    const secret = isRefreshToken ? REFRESH_TOKEN_SECRET : ACCESS_TOKEN_SECRET;
+    return jwt.verify(token, secret);
+  } catch (error) {
+    return null;
+  }
+};
+
+module.exports = { generateAccessToken, generateRefreshToken, verifyToken };
