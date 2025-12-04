@@ -1,4 +1,5 @@
 const { Restaurant, Branch, Settings } = require("../model/resturantModel");
+const { User } = require("../model/userModel");
 const { sendResponse } = require("../utils/responseHelper");
 
 const { Op } = require("sequelize");
@@ -163,15 +164,13 @@ const createBranch = async (req, res) => {
       { transaction }
     );
 
-    await user.update(
-      { branch_id: newBranch.id },
-      {
-        where: {
-          id: userId,
-        },
-      },
-      { transaction }
-    );
+  await User.update(
+  { branch_id: newBranch.id },
+  {
+    where: { id: userId },
+    transaction,
+  }
+);
 
     await transaction.commit();
 
