@@ -3,6 +3,7 @@ const { Branch } = require("../model/resturantModel");
 const { MenuItem } = require("../model/menuItemModel");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
 const { Op } = require("sequelize");
+const { sendResponse } = require("../utils/responseHelper");
 
 // =============================
 // CREATE SPECIAL TAG
@@ -12,18 +13,12 @@ const createSpecialTag = async (req, res) => {
     const { branch_id, title, is_active, display_order } = req.body;
 
     if (!branch_id || !title) {
-      return res.status(400).json({
-        success: false,
-        message: "branch_id and title are required",
-      });
+      return sendResponse(res, 400, "branch_id and title are required");
     }
 
     const branch = await Branch.findByPk(branch_id);
     if (!branch) {
-      return res.status(404).json({
-        success: false,
-        message: "Branch not found",
-      });
+      return sendResponse(res, 404, "Branch not found");
     }
 
     // DUPLICATE CHECK CASE INSENSITIVE
@@ -35,10 +30,7 @@ const createSpecialTag = async (req, res) => {
     });
 
     if (exists) {
-      return res.status(409).json({
-        success: false,
-        message: "Special tag already exists",
-      });
+      return sendResponse(res, 409, "Special tag already exists");
     }
 
     const tag = await SpecialTag.create({
@@ -48,15 +40,11 @@ const createSpecialTag = async (req, res) => {
       display_order: display_order || 0
     });
 
-    return res.status(201).json({
-      success: true,
-      message: "Special tag created successfully",
-      data: tag,
-    });
+    return sendResponse(res, 201, "Special tag created successfully", tag);
 
   } catch (error) {
     console.log("Create Special Tag Error:", error);
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -73,10 +61,7 @@ const getSpecialTags = async (req, res) => {
       order: [["display_order", "ASC"]],
     });
 
-    return res.status(200).json({
-      success: true,
-      data: tags,
-    });
+    return sendResponse(res, 200, "Special tags fetched successfully", tags);
 
   } catch (error) {
     return res.status(500).json(errorHandler(error));
@@ -93,10 +78,7 @@ const updateSpecialTag = async (req, res) => {
     const tag = await SpecialTag.findByPk(id);
 
     if (!tag) {
-      return res.status(404).json({
-        success: false,
-        message: "Special tag not found",
-      });
+      return sendResponse(res, 404, "Special tag not found");
     }
 
     const { title } = req.body;
@@ -110,23 +92,16 @@ const updateSpecialTag = async (req, res) => {
         }
       });
       if (exists) {
-        return res.status(409).json({
-          success: false,
-          message: "Another tag with this name already exists",
-        });
+        return sendResponse(res, 409, "Another tag with this name already exists");
       }
     }
 
     await tag.update(req.body);
 
-    return res.status(200).json({
-      success: true,
-      message: "Special tag updated successfully",
-      data: tag,
-    });
+    return sendResponse(res, 200, "Special tag updated successfully", tag);
 
   } catch (error) {
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -140,22 +115,16 @@ const deleteSpecialTag = async (req, res) => {
 
     const tag = await SpecialTag.findByPk(id);
     if (!tag) {
-      return res.status(404).json({
-        success: false,
-        message: "Special tag not found",
-      });
+      return sendResponse(res, 404, "Special tag not found");
     }
 
     await SpecialTagItem.destroy({ where: { special_tag_id: id } });
     await tag.destroy();
 
-    return res.status(200).json({
-      success: true,
-      message: "Special tag deleted successfully",
-    });
+    return sendResponse(res, 200, "Special tag deleted successfully");
 
   } catch (error) {
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -174,13 +143,10 @@ const getSpecialTagItems = async (req, res) => {
       ]
     });
 
-    return res.status(200).json({
-      success: true,
-      data: items,
-    });
+    return sendResponse(res, 200, "Special tag items fetched successfully", items);
 
   } catch (error) {
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -193,10 +159,7 @@ const assignSpecialItems = async (req, res) => {
     const { special_tag_id, menu_item_ids } = req.body;
 
     if (!special_tag_id || !menu_item_ids?.length) {
-      return res.status(400).json({
-        success: false,
-        message: "special_tag_id & menu_item_ids required",
-      });
+      return sendResponse(res, 400, "special_tag_id & menu_item_ids required");
     }
 
     const insertData = menu_item_ids.map((menu_item_id) => ({
@@ -208,13 +171,10 @@ const assignSpecialItems = async (req, res) => {
       ignoreDuplicates: true,
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Items assigned successfully",
-    });
+    return sendResponse(res, 200, "Items assigned successfully");
 
   } catch (error) {
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -227,23 +187,17 @@ const removeSpecialItem = async (req, res) => {
     const { special_tag_id, menu_item_id } = req.body;
 
     if (!special_tag_id || !menu_item_id) {
-      return res.status(400).json({
-        success: false,
-        message: "special_tag_id & menu_item_id are required",
-      });
+      return sendResponse(res, 400, "special_tag_id & menu_item_id are required");
     }
 
     await SpecialTagItem.destroy({
       where: { special_tag_id, menu_item_id },
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Item removed from tag",
-    });
+    return sendResponse(res, 200, "Item removed from tag");
 
   } catch (error) {
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 

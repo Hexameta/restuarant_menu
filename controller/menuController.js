@@ -3,6 +3,8 @@ const { Category } = require("../model/categoryModel");
 const { MenuItem } = require("../model/menuItemModel");
 const { Branch, Settings } = require("../model/resturantModel");
 const { SpecialTag, SpecialTagItem } = require("../model/specialTagModel");
+const { sendResponse } = require("../utils/responseHelper");
+const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
 
 
 // Helper to get branch ID from slug
@@ -36,19 +38,13 @@ const getBranchDetailsByslug = async (req, res) => {
         });
 
         if (!branch) {
-            return res.status(404).json({
-                success: false,
-                message: "Branch not found",
-            });
+            return sendResponse(res, 404, "Branch not found");
         }
 
-        return res.status(200).json({
-            success: true,
-            data: branch,
-        });
+        return sendResponse(res, 200, "Branch details fetched successfully", branch);
     } catch (error) {
         console.error("Get Restaurant Details By Branch Slug Error:", error);
-        return res.status(500).json(errorHandler(error)); // Assuming errorHandler is available
+        return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
     }
 };
 
@@ -76,13 +72,10 @@ const getCategoriesbyIdForMenu = async (req, res) => {
             },
         });
 
-        return res.status(200).json({
-            success: true,
-            data: category,
-        });
+        return sendResponse(res, 200, "Categories fetched successfully", category);
     } catch (error) {
         console.error("Get Category By Branch Slug Error:", error);
-        return res.status(500).json(errorHandler(error));
+        return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
     }
 };
 
@@ -94,10 +87,7 @@ const getMenuItemsByBranchIdForMenu = async (req, res) => {
         } = req.params;
 
         if (!branchId) {
-            return res.status(404).json({
-                success: false,
-                message: "Branch not found",
-            });
+            return sendResponse(res, 404, "Branch not found");
         }
 
         const menuItems = await MenuItem.findAll({
@@ -111,13 +101,10 @@ const getMenuItemsByBranchIdForMenu = async (req, res) => {
             }]
         });
 
-        return res.status(200).json({
-            success: true,
-            data: menuItems,
-        });
+        return sendResponse(res, 200, "Menu items fetched successfully", menuItems);
     } catch (error) {
         console.error("Get Menu Items By Branch Slug Error:", error);
-        return res.status(500).json(errorHandler(error));
+        return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
     }
 };
 
@@ -128,10 +115,7 @@ const getSpecialMenuItemsByBranchId = async (req, res) => {
         } = req.params;
 
         if (!branchId) {
-            return res.status(400).json({
-                success: false,
-                message: "Branch ID is required",
-            });
+            return sendResponse(res, 400, "Branch ID is required");
         }
 
         const specialMenuItems = await SpecialTag.findAll({
@@ -159,13 +143,10 @@ const getSpecialMenuItemsByBranchId = async (req, res) => {
                 .map(item => item.menu_item)         
         }));
 
-        return res.status(200).json({
-            success: true,
-            data: finalData,
-        });
+        return sendResponse(res, 200, "Special menu items fetched successfully", finalData);
     } catch (error) {
         console.error("Get Special Menu Items By Branch ID Error:", error);
-        return res.status(500).json(errorHandler(error));
+        return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
     }
 };
 
@@ -176,10 +157,7 @@ const getCarasoulByBranchId = async (req, res) => {
         } = req.params;
 
         if (!branchId) {
-            return res.status(400).json({
-                success: false,
-                message: "Branch ID is required",
-            });
+            return sendResponse(res, 400, "Branch ID is required");
         }
 
         const carasoulMenuItems = await Ads.findAll({
@@ -188,13 +166,10 @@ const getCarasoulByBranchId = async (req, res) => {
             }
         });
 
-        return res.status(200).json({
-            success: true,
-            data: carasoulMenuItems,
-        });
+        return sendResponse(res, 200, "Carousel items fetched successfully", carasoulMenuItems);
     } catch (error) {
         console.error("Get Carasoul Menu Items By Branch ID Error:", error);
-        return res.status(500).json(errorHandler(error));
+        return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
     }
 };
 
