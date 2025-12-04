@@ -8,6 +8,7 @@ const {
 } = require("../utils/otpHandler");
 const { sendResponse } = require("../utils/responseHelper");
 const bcrypt = require("bcrypt");
+const { generateToken } = require("../utils/jwtHelper");
 
 const checkUser = async (req, res) => {
   try {
@@ -21,6 +22,27 @@ const checkUser = async (req, res) => {
     const user = await User.findOne({ where: { email: email } });
 
     if (user) {
+      // If password is provided, verify it and issue token
+      if (password) {
+        const isMatch = await bcrypt.compare(password, user.Password);
+        if (isMatch) {
+          const token = generateToken(user);
+          res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production", // Set to true in production
+            sameSite: "strict",
+          });
+        } else {
+          // If password provided but wrong, maybe we should return error?
+          // But original logic just returned user info.
+          // Let's assume if password provided, we want to auth.
+          // But to be safe and minimally invasive to existing logic if password is wrong,
+          // I will just NOT set the cookie, or maybe return 401?
+          // The user request implies this curl IS for auth.
+          return sendResponse(res, 401, "Invalid password");
+        }
+      }
+
       // User exists, check branch
       if (user.branch_id) {
         const branch = await Branch.findByPk(user.branch_id);
@@ -79,7 +101,6 @@ const checkUser = async (req, res) => {
   }
 };
 
-
 const signin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -100,15 +121,23 @@ const signin = async (req, res) => {
       return sendResponse(res, 401, "Invalid password");
     }
 
+    const token = generateToken(user);
+    res.cookie("token", token, {
+      // httpOnly: true,
+      // secure: process.env.NODE_ENV === "production",
+      // sameSite: "strict",
+    });
+
     return sendResponse(res, 200, "User signed in successfully", {
       user: {
-        branch_id : user.branch_id,
-        email : user.email,
-        username : user.username,
-        id : user.id
+        branch_id: user.branch_id,
+        email: user.email,
+        username: user.username,
+        id: user.id,
       },
       redirect: user.branch_id ? "/dashboard" : "/registration",
-      success: true
+      success: true,
+      token: token, // Optional: return token in body too if needed by frontend
     });
   } catch (error) {
     console.error("Error in signin:", error);
@@ -167,6 +196,13 @@ const verifyOTPAndRegister = async (req, res) => {
     // Mark OTP as validated
     await otpRecord.update({ is_validate: true });
 
+    const token = generateToken(newUser);
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
     return sendResponse(res, 201, "User registered successfully", {
       user: newUser,
       status: null,
@@ -182,5 +218,5 @@ const verifyOTPAndRegister = async (req, res) => {
 module.exports = {
   checkUser,
   verifyOTPAndRegister,
-  signin
+  signin,
 };
