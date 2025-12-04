@@ -2,6 +2,7 @@ const { MenuItem } = require("../model/menuItemModel");
 const { Category } = require("../model/categoryModel");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
 const { Op } = require("sequelize");
+const { sendResponse } = require("../utils/responseHelper");
 
 // =============================
 // CREATE MENU ITEM
@@ -21,19 +22,13 @@ const createMenuItem = async (req, res) => {
     } = req.body;
 
     if (!category_id || !name) {
-      return res.status(400).json({
-        success: false,
-        message: "category_id and name are required",
-      });
+      return sendResponse(res, 400, "category_id and name are required");
     }
 
     // Ensure category exists
     const category = await Category.findByPk(category_id);
     if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
+      return sendResponse(res, 404, "Category not found");
     }
 
      const exists = await MenuItem.findOne({
@@ -44,10 +39,7 @@ const createMenuItem = async (req, res) => {
     });
 
     if (exists) {
-      return res.status(409).json({
-        success: false,
-        message: "A menu item with this name already exists in this category",
-      });
+      return sendResponse(res, 409, "A menu item with this name already exists in this category");
     }
 
 
@@ -63,15 +55,11 @@ const createMenuItem = async (req, res) => {
       tag: tag || null,
     });
 
-    return res.status(201).json({
-      success: true,
-      message: "Menu item created successfully",
-      data: item,
-    });
+    return sendResponse(res, 201, "Menu item created successfully", item);
 
   } catch (error) {
     console.log("Create Menu Item Error:", error);
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -112,18 +100,15 @@ const getMenuItems = async (req, res) => {
       order: [["id", "DESC"]],
     });
 
-    return res.status(200).json({
-      success: true,
-      data: rows,
-      pagination: {
-        total: count,
-        page,
-        totalPages: Math.ceil(count / limit),
-      },
+    return sendResponse(res, 200, "Menu items fetched successfully", rows, {
+      totalCount: count,
+      currentPage: page,
+      pageSize: limit,
+      totalPages: Math.ceil(count / limit),
     });
 
   } catch (error) {
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -140,13 +125,10 @@ const getItemsByCategory = async (req, res) => {
       order: [["id", "DESC"]],
     });
 
-    return res.status(200).json({
-      success: true,
-      data: items,
-    });
+    return sendResponse(res, 200, "Menu items fetched successfully", items);
 
   } catch (error) {
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -159,19 +141,13 @@ const getMenuItemById = async (req, res) => {
 
     const item = await MenuItem.findByPk(id);
     if (!item) {
-      return res.status(404).json({
-        success: false,
-        message: "Menu item not found",
-      });
+      return sendResponse(res, 404, "Menu item not found");
     }
 
-    return res.status(200).json({
-      success: true,
-      data: item,
-    });
+    return sendResponse(res, 200, "Menu item fetched successfully", item);
 
   } catch (error) {
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -184,10 +160,7 @@ const updateMenuItem = async (req, res) => {
     const item = await MenuItem.findByPk(id);
 
     if (!item) {
-      return res.status(404).json({
-        success: false,
-        message: "Menu item not found",
-      });
+      return sendResponse(res, 404, "Menu item not found");
     }
 
     const { category_id, name } = req.body;
@@ -203,23 +176,16 @@ const updateMenuItem = async (req, res) => {
       });
 
       if (exists) {
-        return res.status(409).json({
-          success: false,
-          message: "Another item with this name already exists in this category",
-        });
+        return sendResponse(res, 409, "Another item with this name already exists in this category");
       }
     }
 
     await item.update(req.body);
 
-    return res.status(200).json({
-      success: true,
-      message: "Menu item updated successfully",
-      data: item,
-    });
+    return sendResponse(res, 200, "Menu item updated successfully", item);
 
   } catch (error) {
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -240,10 +206,7 @@ const deleteMenuItem = async (req, res) => {
     const fileName = item.image_url;
    await item.destroy(); // ❗ actual delete
 
-    res.status(200).json({
-      success: true,
-      message: "Menu item deleted successfully",
-    });
+    return sendResponse(res, 200, "Menu item deleted successfully");
 
      if (fileName) {
   checkMenuItemImageExistsDB(fileName).then((exists) => {
@@ -257,7 +220,7 @@ const deleteMenuItem = async (req, res) => {
 }
 
   } catch (error) {
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -270,7 +233,7 @@ const searchMenuItem = async (req, res) => {
     const { q } = req.query;
 
     if (!q || q.trim() === "") {
-      return res.status(200).json({ success: true, data: [] });
+      return sendResponse(res, 200, "No query provided", []);
     }
 
     const whereCondition = {
@@ -287,10 +250,10 @@ const searchMenuItem = async (req, res) => {
       limit: 10,
     });
 
-    return res.status(200).json({ success: true, data: items });
+    return sendResponse(res, 200, "Menu items fetched successfully", items);
 
   } catch (error) {
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 

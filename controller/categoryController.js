@@ -2,6 +2,7 @@ const { Category } = require("../model/categoryModel");
 const { Branch } = require("../model/resturantModel");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
 const { Op } = require("sequelize");
+const { sendResponse } = require("../utils/responseHelper");
 
 // =============================
 // CREATE CATEGORY
@@ -11,19 +12,13 @@ const createCategory = async (req, res) => {
     const { branch_id, name, image_url, display_order } = req.body;
 
     if (!branch_id || !name) {
-      return res.status(400).json({
-        success: false,
-        message: "branch_id and name are required",
-      });
+      return sendResponse(res, 400, "branch_id and name are required");
     }
 
     // Check branch exists
     const branch = await Branch.findByPk(branch_id);
     if (!branch) {
-      return res.status(404).json({
-        success: false,
-        message: "Branch not found",
-      });
+      return sendResponse(res, 404, "Branch not found");
     }
 
         // Case-insensitive category check
@@ -36,10 +31,7 @@ const createCategory = async (req, res) => {
     });
 
     if (exists) {
-      return res.status(400).json({
-        success: false,
-        message: `Category "${name}" already exists in this branch`,
-      });
+      return sendResponse(res, 400, `Category "${name}" already exists in this branch`);
     }
 
 
@@ -51,14 +43,10 @@ const createCategory = async (req, res) => {
       display_order: display_order || 0,
     });
 
-    return res.status(201).json({
-      success: true,
-      message: "Category created successfully",
-      data: category,
-    });
+    return sendResponse(res, 201, "Category created successfully", category);
   } catch (error) {
     console.log("Create Category Error:", error);
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -79,17 +67,14 @@ const getCategories = async (req, res) => {
       order: [["display_order", "ASC"]],
     });
 
-    return res.status(200).json({
-      success: true,
-      data: rows,
-      pagination: {
-        total: count,
-        page,
-        totalPages: Math.ceil(count / limit),
-      },
+    return sendResponse(res, 200, "Categories fetched successfully", rows, {
+      totalCount: count,
+      currentPage: page,
+      pageSize: limit,
+      totalPages: Math.ceil(count / limit),
     });
   } catch (error) {
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -109,13 +94,10 @@ const getCategoryById = async (req, res) => {
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      data: category,
-    });
+    return sendResponse(res, 200, "Category fetched successfully", category);
   } catch (error) {
     console.log("Get Category Error:", error);
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -129,10 +111,7 @@ const updateCategory = async (req, res) => {
 
     const category = await Category.findByPk(id);
     if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
+      return sendResponse(res, 404, "Category not found");
     }
 
     // If user changed the name → check for duplicates
@@ -147,10 +126,7 @@ const updateCategory = async (req, res) => {
       });
 
       if (existing) {
-        return res.status(400).json({
-          success: false,
-          message: `Another category with name "${name}" already exists`,
-        });
+        return sendResponse(res, 400, `Another category with name "${name}" already exists`);
       }
     }
 
@@ -161,14 +137,10 @@ const updateCategory = async (req, res) => {
       display_order: display_order ?? category.display_order,
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Category updated successfully",
-      data: category,
-    });
+    return sendResponse(res, 200, "Category updated successfully", category);
   } catch (error) {
     console.log("Update Category Error:", error);
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 // =============================
@@ -180,21 +152,15 @@ const deleteCategory = async (req, res) => {
 
     const category = await Category.findByPk(id);
     if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
+      return sendResponse(res, 404, "Category not found");
     }
 
     await category.update({ is_active: false });
 
-    return res.status(200).json({
-      success: true,
-      message: "Category deleted successfully",
-    });
+    return sendResponse(res, 200, "Category deleted successfully");
   } catch (error) {
     console.log("Delete Category Error:", error);
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -205,7 +171,7 @@ const searchCategory = async (req, res) => {
     const q = req.query.q || "";
 
     if (!q || q.trim() === "") {
-      return res.status(200).json({ success: true, data: [] });
+      return sendResponse(res, 200, "No query provided", []);
     }
 
     // ----- BUILD WHERE CONDITION SAFELY -----
@@ -224,14 +190,11 @@ const searchCategory = async (req, res) => {
       limit: 10,
     });
 
-    return res.status(200).json({
-      success: true,
-      data: categories,
-    });
+    return sendResponse(res, 200, "Categories fetched successfully", categories);
 
   } catch (error) {
     console.error("Search Category Error:", error);
-    return res.status(500).json(errorHandler(error));
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
 
@@ -277,7 +240,7 @@ const reOrderCategory = async (req, res) => {
     const { orderedIds } = req.body; // e.g. [5, 3, 9, 1, 4]
 
     if (!Array.isArray(orderedIds)) {
-      return res.status(400).json({ success: false, message: "orderedIds must be array" });
+      return sendResponse(res, 400, "orderedIds must be array");
     }
 
     for (let index = 0; index < orderedIds.length; index++) {
@@ -287,13 +250,10 @@ const reOrderCategory = async (req, res) => {
       );
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Category priority updated",
-    });
+    return sendResponse(res, 200, "Category priority updated");
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: "Server error" });
+    return sendResponse(res, 500, "Server error", { error: err.message });
   }
 }
 

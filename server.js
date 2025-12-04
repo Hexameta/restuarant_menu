@@ -60,7 +60,6 @@ app.use(
 app.use(authMiddleware);
 
 app.use("/", indexRouter);
-// app.use('/users', usersRouter);
 app.use("/api/v1/users", usersRouter);
 app.use("/api/v1/restaurant", restaurantRouter);
 app.use("/api/v1/category", categoryRouter);

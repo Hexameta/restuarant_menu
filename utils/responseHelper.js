@@ -1,7 +1,9 @@
 const sendResponse = (res, statusCode, message, data = {}, pagination = null) => {
+  const isSuccess = statusCode >= 200 && statusCode < 300;
+  
   const response = {
-    success: statusCode >= 200 && statusCode < 300,
-    status: statusCode >= 200 && statusCode < 300 ? 'success' : 'error',
+    status: isSuccess ? 'success' : 'error',
+    success: isSuccess,
     message: message,
     data: data,
   };
