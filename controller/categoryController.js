@@ -55,7 +55,8 @@ const createCategory = async (req, res) => {
 // =============================
 const getCategories = async (req, res) => {
   try {
-    const { branch_id } = req.params;
+    // const { branch_id } = req.params;
+    const branch_id = req.user.branchId; 
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
@@ -167,7 +168,8 @@ const deleteCategory = async (req, res) => {
 
 const searchCategory = async (req, res) => {
   try {
-    const branch_id = req.params.branch_id || null;
+    // const branch_id = req.params.branch_id || null;
+    const branch_id = req.user.branchId; 
     const q = req.query.q || "";
 
     if (!q || q.trim() === "") {

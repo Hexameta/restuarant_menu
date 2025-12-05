@@ -19,7 +19,7 @@ const {
 router.post("/", createSpecialTag);
 
 // Get tags for branch
-router.get("/:branch_id", getSpecialTags);
+router.get("/", getSpecialTags);
 
 // Update tag
 router.put("/:id", updateSpecialTag);

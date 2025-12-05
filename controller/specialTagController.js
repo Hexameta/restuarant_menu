@@ -54,7 +54,8 @@ const createSpecialTag = async (req, res) => {
 // =============================
 const getSpecialTags = async (req, res) => {
   try {
-    const { branch_id } = req.params;
+    // const { branch_id } = req.params;
+    const branch_id = req.user.branchId; 
 
     const tags = await SpecialTag.findAll({
       where: { branch_id },

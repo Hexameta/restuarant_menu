@@ -1,7 +1,7 @@
 const { verifyToken } = require("../utils/jwtHelper");
 const { sendResponse } = require("../utils/responseHelper");
 
-const authMiddleware = (req, res, next) => {
+const  authMiddleware = (req, res, next) => {
   // Check for excluded routes
   // Note: This check can also be done in app.js by applying middleware conditionally
   // But doing it here adds an extra layer of safety if applied globally
@@ -11,7 +11,7 @@ const authMiddleware = (req, res, next) => {
     "/api/v1/users/check",
     "/api/v1/users/verify-otp",
     "/api/v1/users/refresh-token",
-    "/api/v1/restaurant/search",
+    "/api/v1/restaurant/search"
   ];
 
   const publicGetPaths = [
