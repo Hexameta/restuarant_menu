@@ -11,7 +11,6 @@ const  authMiddleware = (req, res, next) => {
     "/api/v1/users/check",
     "/api/v1/users/verify-otp",
     "/api/v1/users/refresh-token",
-    "/api/v1/restaurant",
     "/api/v1/image-upload"
   ];
 
@@ -19,9 +18,7 @@ const  authMiddleware = (req, res, next) => {
     "/api/v1/menu-item",
     "/api/v1/category",
     "/api/v1/menu",
-    "/api/v1/special-tag",
-    "/api/v1/ads",
-    "/api/v1/restaurant", // For fetching restaurant details by ID
+    "/api/v1/special-tag"
   ];
 
   if (publicPaths.some((path) => req.path.startsWith(path))) {
@@ -50,6 +47,10 @@ const  authMiddleware = (req, res, next) => {
 
   if (!decoded) {
     return sendResponse(res, 401, "Invalid or expired token.");
+  }
+
+  if(!decoded.branchId){
+      return sendResponse(res, 401, "Branch id missing in token.");
   }
 
   req.user = decoded;

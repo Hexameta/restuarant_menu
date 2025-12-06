@@ -191,10 +191,10 @@ const createBranch = async (req, res) => {
 };
 const getResturantById = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { branchId } = req.user;
     const restaurant = await Branch.findOne({
       where: {
-        id: id,
+        id: branchId,
       },
     });
     const settings = await Settings.findOne({
