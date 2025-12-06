@@ -211,6 +211,9 @@ const logMenuAccess = async (req, res) => {
 };
 
 
+
+
+
 module.exports = {
     getBranchDetailsByslug,
     getCategoriesbyIdForMenu,

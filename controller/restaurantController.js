@@ -1,8 +1,11 @@
+const { Category } = require("../model/categoryModel");
+const { MenuAccessLog } = require("../model/menuAccessLogModel");
+const { MenuItem } = require("../model/menuItemModel");
 const { Restaurant, Branch, Settings } = require("../model/resturantModel");
 const { User } = require("../model/userModel");
 const { sendResponse } = require("../utils/responseHelper");
 
-const { Op } = require("sequelize");
+const { Op, fn, literal, col } = require("sequelize");
 
 /**
  * Search Restaurants Controller
@@ -353,10 +356,77 @@ description,
 };
 
 
+const getAnalytics = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const branch = await Branch.findOne({
+      where: { slug, is_active: true },
+      attributes: ["id"]
+    });
+
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: "Branch not found",
+      });
+    }
+
+    const branchId = branch.id;
+
+    // 1) categories
+    const totalCategories = await Category.count({
+      where: { branch_id: branchId, is_active:true },
+    });
+
+    // 2) items (through category)
+    const totalItems = await MenuItem.count({
+      include: [{
+        model: Category,
+        attributes: [],
+        where: { branch_id: branchId }
+      }]
+    });
+
+    // 3) monthly visitors
+    const visitors = await MenuAccessLog.findAll({
+      where: { branch_id: branchId },
+      attributes: [
+        [fn("DATE_TRUNC", "month", col("accessed_at")), "month"],
+        [fn("COUNT", "*"), "count"],
+      ],
+      group: [literal(`DATE_TRUNC('month', accessed_at)`)],
+      order: literal(`DATE_TRUNC('month', accessed_at)`),
+    });
+
+    let monthlyVisitors = Array(12).fill(0);
+
+    visitors.forEach((row) => {
+      const monthIndex = new Date(row.dataValues.month).getMonth();
+      monthlyVisitors[monthIndex] = Number(row.dataValues.count);
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        totalCategories,
+        totalItems,
+        monthlyVisitors
+      },
+    });
+
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+
 module.exports = {
   searchRestaurants,
   createBranch,
   getResturantById,
   updateBranchAndSettings,
-  checkRestaurantsImageExistDB
+  checkRestaurantsImageExistDB,
+  getAnalytics
 };
