@@ -257,7 +257,7 @@ const checkRestaurantsImageExistDB = async (fileName, id = null) => {
 
 
 const updateBranchAndSettings = async (req, res) => {
-  const { branchId } = req.params;
+  const { branchId } = req.user;
 
   const transaction = await Branch.sequelize.transaction();
 

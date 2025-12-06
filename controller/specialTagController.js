@@ -10,7 +10,9 @@ const { sendResponse } = require("../utils/responseHelper");
 // =============================
 const createSpecialTag = async (req, res) => {
   try {
-    const { branch_id, title, is_active, display_order } = req.body;
+
+    const branch_id = req.user.branchId
+    const {  title, is_active, display_order } = req.body;
 
     if (!branch_id || !title) {
       return sendResponse(res, 400, "branch_id and title are required");
