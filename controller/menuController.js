@@ -3,6 +3,7 @@ const { Category } = require("../model/categoryModel");
 const { MenuItem } = require("../model/menuItemModel");
 const { Branch, Settings } = require("../model/resturantModel");
 const { SpecialTag, SpecialTagItem } = require("../model/specialTagModel");
+const { MenuAccessLog } = require("../model/menuAccessLogModel");
 const { sendResponse } = require("../utils/responseHelper");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
 
@@ -174,10 +175,47 @@ const getCarasoulByBranchId = async (req, res) => {
 };
 
 
+// API for logging menu access when QR code is scanned
+const logMenuAccess = async (req, res) => {
+    try {
+        const { slug } = req.params;
+
+        // Find branch by slug
+        const branch = await Branch.findOne({
+            where: {
+                slug: slug,
+                is_active: true
+            },
+            attributes: ['id']
+        });
+
+        if (!branch) {
+            return sendResponse(res, 404, "Branch not found");
+        }
+
+        // Create log entry
+        const logEntry = await MenuAccessLog.create({
+            branch_id: branch.id,
+            accessed_at: new Date()
+        });
+
+        return sendResponse(res, 201, "Menu access logged successfully", {
+            log_id: logEntry.id,
+            branch_id: logEntry.branch_id,
+            accessed_at: logEntry.accessed_at
+        });
+    } catch (error) {
+        console.error("Log Menu Access Error:", error);
+        return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
+    }
+};
+
+
 module.exports = {
     getBranchDetailsByslug,
     getCategoriesbyIdForMenu,
     getMenuItemsByBranchIdForMenu,
     getSpecialMenuItemsByBranchId,
-    getCarasoulByBranchId
+    getCarasoulByBranchId,
+    logMenuAccess
 };

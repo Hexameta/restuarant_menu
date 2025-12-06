@@ -2,6 +2,8 @@ const jwt = require("jsonwebtoken");
 const {
   JWT_ACCESS_SECRET,
   JWT_REFRESH_SECRET,
+  JWT_ACCESS_EXPIRATION,
+  JWT_REFRESH_EXPIRATION,
 } = require("../config/envVariable");
 
 const ACCESS_TOKEN_SECRET = JWT_ACCESS_SECRET;
@@ -13,7 +15,7 @@ const generateAccessToken = (user) => {
     email: user.email,
     branchId: user.branch_id,
   };
-  return jwt.sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: "15m" });
+  return jwt.sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: JWT_ACCESS_EXPIRATION });
 };
 
 const generateRefreshToken = (user) => {
@@ -22,7 +24,7 @@ const generateRefreshToken = (user) => {
     email: user.email,
     branchId: user.branch_id,
   };
-  return jwt.sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
+  return jwt.sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: JWT_REFRESH_EXPIRATION });
 };
 
 const verifyToken = (token, isRefreshToken = false) => {
