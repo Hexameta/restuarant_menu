@@ -1,6 +1,6 @@
 const { MenuItem } = require("../model/menuItemModel");
 const { Category } = require("../model/categoryModel");
-const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
+const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
 const { Op } = require("sequelize");
 const { sendResponse } = require("../utils/responseHelper");
 

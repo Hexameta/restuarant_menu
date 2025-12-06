@@ -1,6 +1,6 @@
 const { Category } = require("../model/categoryModel");
 const { Branch } = require("../model/resturantModel");
-const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
+const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
 const { Op } = require("sequelize");
 const { sendResponse } = require("../utils/responseHelper");
 

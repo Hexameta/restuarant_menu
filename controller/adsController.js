@@ -1,5 +1,5 @@
 const { Ads } = require("../model/adsModal");
-const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
+const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
 const { Op } = require("sequelize");
 const jwt = require('jsonwebtoken');
 
