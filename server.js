@@ -28,7 +28,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "http://localhost:5000"); // Adjust this to your frontend's origin
+  res.header("Access-Control-Allow-Origin", "http://localhost:5001"); // Adjust this to your frontend's origin
   res.header("Access-Control-Allow-Credentials", "true");
   res.header(
     "Access-Control-Allow-Methods",
@@ -52,7 +52,6 @@ app.use(
     ],
     //  origin: ['http://localhost:4000', 'http://localhost:3000'],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    credentials: true,
     credentials: true,
   })
 );
