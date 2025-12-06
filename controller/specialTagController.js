@@ -1,7 +1,7 @@
 const { SpecialTag, SpecialTagItem } = require("../model/specialTagModel");
 const { Branch } = require("../model/resturantModel");
 const { MenuItem } = require("../model/menuItemModel");
-const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
+const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
 const { Op } = require("sequelize");
 const { sendResponse } = require("../utils/responseHelper");
 

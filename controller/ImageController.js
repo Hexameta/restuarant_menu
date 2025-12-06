@@ -1,7 +1,7 @@
 const multer = require("multer");
 const sharp = require("sharp");
 const { createClient } = require("@supabase/supabase-js");
-const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
+const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
 const {checkCategoryImageExistsDB} = require("../controller/categoryController");
 const { checkMenuItemImageExistsDB } = require("./menuItemController");
 const { checkAdsImageExistsDB } = require("./adsController");

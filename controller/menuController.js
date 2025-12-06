@@ -5,7 +5,7 @@ const { Branch, Settings } = require("../model/resturantModel");
 const { SpecialTag, SpecialTagItem } = require("../model/specialTagModel");
 const { MenuAccessLog } = require("../model/menuAccessLogModel");
 const { sendResponse } = require("../utils/responseHelper");
-const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
+const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
 
 
 // Helper to get branch ID from slug
