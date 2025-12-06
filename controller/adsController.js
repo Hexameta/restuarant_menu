@@ -9,7 +9,6 @@ const jwt = require('jsonwebtoken');
 const createAd = async (req, res) => {
   try {
     const {
-      branch_id,
       title,
       ad_type,
       valid_from,
@@ -17,6 +16,8 @@ const createAd = async (req, res) => {
       image_url,
       is_admin,
     } = req.body;
+
+     const branch_id = req.user.branchId; 
 
     if (!branch_id || !image_url || !ad_type) {
       return res.status(400).json({
@@ -51,7 +52,6 @@ const createAd = async (req, res) => {
  */
 const getAds = async (req, res) => {
   try {
-    // const { branch_id } = req.params;
     const branch_id = req.user.branchId; 
     
 
@@ -111,9 +111,11 @@ const getActiveAds = async (req, res) => {
  */
 const updateAd = async (req, res) => {
   try {
+    const {branchId} = req.user
     const { id } = req.params;
     const ad = await Ads.findByPk(id);
 
+    req.body.branch_id = branchId
     if (!ad) {
       return res.status(404).json({
         success: false,

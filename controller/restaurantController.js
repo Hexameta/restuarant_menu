@@ -74,6 +74,7 @@ const createBranch = async (req, res) => {
       facebook_url,
       instagram_url,
       google_feedback_url,
+      pdf_menu_url 
     } = req.body;
 
     let finalRestaurantId = restaurant_id;
@@ -160,6 +161,7 @@ const createBranch = async (req, res) => {
         facebook_url,
         instagram_url,
         google_feedback_url,
+        pdf_menu_url
       },
       { transaction }
     );
@@ -189,10 +191,10 @@ const createBranch = async (req, res) => {
 };
 const getResturantById = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { branchId } = req.user;
     const restaurant = await Branch.findOne({
       where: {
-        id: id,
+        id: branchId,
       },
     });
     const settings = await Settings.findOne({
@@ -218,8 +220,143 @@ const getResturantById = async (req, res) => {
   }
 };
 
+
+const checkRestaurantsImageExistDB = async (fileName, id = null) => {
+  try {
+    if (!fileName) {
+      return { success: false, exists: false };
+    }
+
+    const whereCondition = {
+      logo: fileName,
+    };
+
+    // If editing — exclude the current category
+    if (id) {
+      whereCondition.id = { [Op.ne]: id };  // id != this record
+    }
+
+    const exists = await Settings.findOne({
+      where: whereCondition,
+    });
+
+    return {
+      success: true,
+      exists: !!exists,
+    };
+
+  } catch (error) {
+    console.log("Check Image in DB Error:", error);
+    return {
+      success: false,
+      exists: false,
+      error,
+    };
+  }
+};
+
+
+const updateBranchAndSettings = async (req, res) => {
+  const { branchId } = req.params;
+
+  const transaction = await Branch.sequelize.transaction();
+
+  try {
+    const {
+      // BRANCH editable fields
+      branch_name,
+      branch_phone,
+      branch_email,
+      country,
+      state,
+      district,
+      city,
+      place,
+description,
+      // SETTINGS editable fields (including LOGO)
+      settings_logo,
+      currency,
+      symbol,
+      symbol_position,
+      facebook_url,
+      instagram_url,
+      google_feedback_url,
+      pdf_menu_url
+
+    } = req.body;
+
+    // ----------------------------------------------------------------------
+    // FIND BRANCH
+    // ----------------------------------------------------------------------
+    const branch = await Branch.findByPk(branchId);
+    if (!branch) {
+      await transaction.rollback();
+      return sendResponse(res, 404, "Branch not found");
+    }
+
+    // ----------------------------------------------------------------------
+    // UPDATE BRANCH ONLY
+    // ----------------------------------------------------------------------
+    await branch.update(
+      {
+        name: branch_name ?? branch.name,
+        phone: branch_phone ?? branch.phone,
+        email: branch_email ?? branch.email,
+        country: country ?? branch.country,
+        state: state ?? branch.state,
+        district: district ?? branch.district,
+        city: city ?? branch.city,
+        place: place ?? branch.place,
+        description: description ?? branch.description,
+      },
+      { transaction }
+    );
+
+    // ----------------------------------------------------------------------
+    // UPDATE SETTINGS ONLY
+    // ----------------------------------------------------------------------
+    const settings = await Settings.findOne({ where: { branch_id: branch.id } });
+
+    if (!settings) {
+      await transaction.rollback();
+      return sendResponse(res, 404, "Settings not found");
+    }
+
+    await settings.update(
+      {
+        logo: settings_logo ?? settings.logo,  // <== ONLY LOGO WE UPDATE
+        currency: currency ?? settings.currency,
+        symbol: symbol ?? settings.symbol,
+        symbol_position: symbol_position ?? settings.symbol_position,
+        facebook_url: facebook_url ?? settings.facebook_url,
+        instagram_url: instagram_url ?? settings.instagram_url,
+        google_feedback_url: google_feedback_url ?? settings.google_feedback_url,
+        pdf_menu_url: pdf_menu_url ?? settings.pdf_menu_url
+      },
+      { transaction }
+    );
+
+    await transaction.commit();
+
+    return sendResponse(res, 200, "Updated successfully", {
+      branch,
+      settings,
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Update error:", error);
+    return sendResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
+  }
+};
+
+
 module.exports = {
   searchRestaurants,
   createBranch,
-  getResturantById
+  getResturantById,
+  updateBranchAndSettings,
+  checkRestaurantsImageExistDB
 };

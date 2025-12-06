@@ -28,7 +28,7 @@ const checkUser = async (req, res) => {
         if (isMatch) {
           const accessToken = generateAccessToken(user);
           const refreshToken = generateRefreshToken(user);
-          
+
           res.cookie("accessToken", accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -136,12 +136,15 @@ const signin = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
+      secure: false,
+
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
+
     });
 
     return sendResponse(res, 200, "User signed in successfully", {

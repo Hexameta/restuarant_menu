@@ -7,7 +7,8 @@ const authMiddleware = (req, res, next) => {
     "/api/v1/users/signin",
     "/api/v1/users/check",
     "/api/v1/users/verify-otp",
-    "/api/v1/restaurant/search"
+    "/api/v1/restaurant/search",
+    "/api/v1/image-upload",
   ];
 
   const publicGetPaths = [
@@ -15,8 +16,6 @@ const authMiddleware = (req, res, next) => {
     "/api/v1/category",
     "/api/v1/menu",
     "/api/v1/special-tag",
-    "/api/v1/ads",
-    "/api/v1/restaurant", // For fetching restaurant details by ID
   ];
 
   if (publicPaths.some((path) => req.path.startsWith(path))) {
@@ -33,7 +32,11 @@ const authMiddleware = (req, res, next) => {
   // Get access token from cookie or header
   let accessToken = req.cookies.accessToken;
 
-  if (!accessToken && req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+  if (
+    !accessToken &&
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer ")
+  ) {
     accessToken = req.headers.authorization.split(" ")[1];
   }
 
@@ -52,7 +55,11 @@ const authMiddleware = (req, res, next) => {
     const refreshDecoded = verifyToken(refreshToken, true);
 
     if (!refreshDecoded) {
-      return sendResponse(res, 401, "Invalid or expired refresh token. Please login again.");
+      return sendResponse(
+        res,
+        401,
+        "Invalid or expired refresh token. Please login again."
+      );
     }
 
     // Generate new access token from refresh token
@@ -73,6 +80,10 @@ const authMiddleware = (req, res, next) => {
 
     // Use the refreshed token data for the request
     decoded = refreshDecoded;
+  }
+
+  if (!decoded.branchId) {
+    return sendResponse(res, 401, "Branch id missing in token.");
   }
 
   req.user = decoded;

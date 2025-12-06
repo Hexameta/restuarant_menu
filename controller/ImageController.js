@@ -5,6 +5,7 @@ const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
 const {checkCategoryImageExistsDB} = require("../controller/categoryController");
 const { checkMenuItemImageExistsDB } = require("./menuItemController");
 const { checkAdsImageExistsDB } = require("./adsController");
+const { checkRestaurantsImageExistDB } = require("./restaurantController");
 // =============================
 // SUPABASE CLIENT
 // =============================
@@ -141,6 +142,9 @@ const deleteImage = async (req, res) => {
       }
       if(tableName == "ads"){
         response = await checkAdsImageExistsDB(fileName,id)
+      }
+      if(tableName == "restaurants"){
+        response = await checkRestaurantsImageExistDB(fileName,id)
       }
      if(response?.exists){
        return res.status(200).json({

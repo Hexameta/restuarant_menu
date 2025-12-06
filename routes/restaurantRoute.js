@@ -4,12 +4,19 @@ const {
   searchRestaurants,
   createBranch,
   getResturantById,
+  updateBranchAndSettings
 } = require("../controller/restaurantController");
+
+
+router.get("/", getResturantById);
 
 router.get("/search", searchRestaurants);
 
 router.post("/create/:userId", createBranch);
 
-router.get("/:id", getResturantById);
+router.patch("/update-settings/:branchId", updateBranchAndSettings)
+
+
+
 
 module.exports = router;
