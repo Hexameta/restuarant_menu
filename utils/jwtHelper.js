@@ -1,7 +1,11 @@
 const jwt = require("jsonwebtoken");
+const {
+  JWT_ACCESS_SECRET,
+  JWT_REFRESH_SECRET,
+} = require("../config/envVariable");
 
-const ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || "your_access_secret_key";
-const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || "your_refresh_secret_key";
+const ACCESS_TOKEN_SECRET = JWT_ACCESS_SECRET;
+const REFRESH_TOKEN_SECRET = JWT_REFRESH_SECRET;
 
 const generateAccessToken = (user) => {
   const payload = {
