@@ -11,7 +11,8 @@ const  authMiddleware = (req, res, next) => {
     "/api/v1/users/check",
     "/api/v1/users/verify-otp",
     "/api/v1/users/refresh-token",
-    "/api/v1/restaurant/search"
+    "/api/v1/restaurant",
+    "/api/v1/image-upload"
   ];
 
   const publicGetPaths = [

@@ -10,6 +10,6 @@ const { deleteImage } = require("../controller/ImageController");
 
 router.post("/upload", upload.single("image"), uploadImage);
 router.post("/delete", deleteImage);
-router.post("/upload-pdf", upload.single("pdf"), uploadPdf);
+router.post("/upload-pdf", upload.single("pdfFile"), uploadPdf);
 router.post("/delete-pdf", deletePdf);
 module.exports = router;
