@@ -72,7 +72,8 @@ const getMenuItems = async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
 
-    const { category_id, branch_id } = req.query;
+    const branch_id = req.user.branchId
+    const { category_id } = req.query;
 
     const whereCondition = {};
     const categoryCondition = {};

@@ -169,8 +169,8 @@ const deleteCategory = async (req, res) => {
 
 const searchCategory = async (req, res) => {
   try {
-    const searchId = req.params.branch_id || null;
-     const branch_id = null
+    const searchId = req.params.id || null;
+     let  branch_id = null
     if(searchId){
 
       branch_id = req.user.branchId; 

@@ -11,7 +11,7 @@ const {
 } = require("../controller/categoryController");
 
 router.post("/", createCategory);
-router.get("/search?", searchCategory); 
+router.get("/search/:id?", searchCategory); 
 router.get("/", getCategories);
 router.get("/single/:id", getCategoryById);
 router.put("/:id", updateCategory);
