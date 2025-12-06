@@ -7,18 +7,11 @@ const  authMiddleware = (req, res, next) => {
   // But doing it here adds an extra layer of safety if applied globally
   // Check for excluded routes
   const publicPaths = [
-    "/api/v1/users/signin",
-    "/api/v1/users/check",
-    "/api/v1/users/verify-otp",
-    "/api/v1/users/refresh-token",
-    "/api/v1/image-upload"
+
   ];
 
   const publicGetPaths = [
-    "/api/v1/menu-item",
-    "/api/v1/category",
-    "/api/v1/menu",
-    "/api/v1/special-tag"
+
   ];
 
   if (publicPaths.some((path) => req.path.startsWith(path))) {

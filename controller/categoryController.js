@@ -9,7 +9,8 @@ const { sendResponse } = require("../utils/responseHelper");
 // =============================
 const createCategory = async (req, res) => {
   try {
-    const { branch_id, name, image_url, display_order } = req.body;
+    const branch_id = req.user.branchId
+    const {  name, image_url, display_order } = req.body;
 
     if (!branch_id || !name) {
       return sendResponse(res, 400, "branch_id and name are required");
@@ -168,8 +169,12 @@ const deleteCategory = async (req, res) => {
 
 const searchCategory = async (req, res) => {
   try {
-    // const branch_id = req.params.branch_id || null;
-    const branch_id = req.user.branchId; 
+    const searchId = req.params.branch_id || null;
+     const branch_id = null
+    if(searchId){
+
+      branch_id = req.user.branchId; 
+    }
     const q = req.query.q || "";
 
     if (!q || q.trim() === "") {
