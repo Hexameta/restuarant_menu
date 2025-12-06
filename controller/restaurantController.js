@@ -135,7 +135,7 @@ const createBranch = async (req, res) => {
         restaurant_id: finalRestaurantId,
         name: branch_name,
         phone: phone,
-
+        email:restaurant_email,
         country,
         state,
         district,

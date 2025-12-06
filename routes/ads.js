@@ -11,11 +11,11 @@ const {
 
 // Admin & merchant UI
 router.post("/", createAd);
-router.get("/:branch_id", getAds);
+router.get("/", getAds);
 router.put("/:id", updateAd);
 router.delete("/:id", deleteAd);
 
 // Customer facing Banner / Carousel
-router.get("/active/:branch_id", getActiveAds);
+router.get("/active", getActiveAds);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const { Ads } = require("../model/adsModal");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHanlder");
 const { Op } = require("sequelize");
+const jwt = require('jsonwebtoken');
 
 /**
  * CREATE AD
@@ -50,7 +51,10 @@ const createAd = async (req, res) => {
  */
 const getAds = async (req, res) => {
   try {
-    const { branch_id } = req.params;
+    // const { branch_id } = req.params;
+    const branch_id = req.user.branchId; 
+    
+
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
@@ -81,7 +85,9 @@ const getAds = async (req, res) => {
  */
 const getActiveAds = async (req, res) => {
   try {
-    const { branch_id } = req.params;
+    // const { branch_id } = req.params;
+
+    const branch_id = req.user.branchId; 
 
     const now = new Date();
 
