@@ -22,60 +22,10 @@ const checkUser = async (req, res) => {
     const user = await User.findOne({ where: { email: email } });
 
     if (user) {
-      // If password is provided, verify it and issue token
-      if (password) {
-        const isMatch = await bcrypt.compare(password, user.Password);
-        if (isMatch) {
-          const accessToken = generateAccessToken(user);
-          const refreshToken = generateRefreshToken(user);
-
-          res.cookie("accessToken", accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-          });
-
-          res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-          });
-        } else {
-          // If password provided but wrong, maybe we should return error?
-          // But original logic just returned user info.
-          // Let's assume if password provided, we want to auth.
-          // But to be safe and minimally invasive to existing logic if password is wrong,
-          // I will just NOT set the cookie, or maybe return 401?
-          // The user request implies this curl IS for auth.
-          return sendResponse(res, 401, "Invalid password");
-        }
-      }
-
-      // User exists, check branch
-      if (user.branch_id) {
-        const branch = await Branch.findByPk(user.branch_id);
-        if (branch) {
-          return sendResponse(res, 200, "User found with branch", {
-            user: user,
-            branch: branch,
-            status: branch.status, // Return status of branch model as requested
-          });
-        } else {
-          // Branch ID exists but branch not found (edge case)
-          return sendResponse(
-            res,
-            200,
-            "User found but branch details missing",
-            { status: null }
-          );
-        }
-      } else {
-        // User exists but no branch_id
-        return sendResponse(res, 200, "User found without branch", {
-          status: null,
-        });
-      }
-    } else {
+      return sendResponse(res, 400, "Mail id already exist! Try to Sign in");
+    }
+      
+      
       // User does not exist, initiate OTP flow
       const otp = generateOTP();
       const expiration = getOTPExpiration();
@@ -100,7 +50,7 @@ const checkUser = async (req, res) => {
       } else {
         return sendResponse(res, 500, "Failed to send OTP email");
       }
-    }
+    
   } catch (error) {
     console.error("Error in checkUser:", error);
     return sendResponse(res, 500, "Internal Server Error", {
@@ -126,11 +76,38 @@ const signin = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.Password);
 
     if (!isMatch) {
-      return sendResponse(res, 401, "Invalid password");
+      return sendResponse(res, 400, "Invalid password");
     }
 
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+
+    let tokenPayload = {}
+    console.log(user.branch_id);
+    
+
+    if(user.branch_id !== null){
+      tokenPayload = {
+        id: user.id,
+        email: user.email,
+        branch_id: user.branch_id,
+      };
+    }else{
+      tokenPayload = {
+        id: user.id,
+        email: user.email,
+        branch_id: user.branch_id,
+        newUser: true,
+      };
+    }
+
+    console.log(tokenPayload);
+    
+
+    const accessToken = generateAccessToken(tokenPayload);
+    const refreshToken = generateRefreshToken(tokenPayload);
+
+    console.log(accessToken);
+    console.log(refreshToken);
+    
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
@@ -212,11 +189,35 @@ const verifyOTPAndRegister = async (req, res) => {
       branch_id: null, // Default null as per flow
     });
 
+
+
     // Mark OTP as validated
     await otpRecord.update({ is_validate: true });
 
-    const accessToken = generateAccessToken(newUser);
-    const refreshToken = generateRefreshToken(newUser);
+    let tokenPayload = {}
+    console.log(user.branch_id);
+    
+
+    if(user.branch_id !== null){
+      tokenPayload = {
+        id: user.id,
+        email: user.email,
+        branch_id: user.branch_id,
+      };
+    }else{
+      tokenPayload = {
+        id: user.id,
+        email: user.email,
+        branch_id: user.branch_id,
+        newUser: true,
+      };
+    }
+
+    console.log(tokenPayload);
+    
+
+    const accessToken = generateAccessToken(tokenPayload);
+    const refreshToken = generateRefreshToken(tokenPayload);
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,

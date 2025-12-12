@@ -3,6 +3,7 @@ const { MenuAccessLog } = require("../model/menuAccessLogModel");
 const { MenuItem } = require("../model/menuItemModel");
 const { Restaurant, Branch, Settings } = require("../model/resturantModel");
 const { User } = require("../model/userModel");
+const { generateAccessToken, generateRefreshToken } = require("../utils/jwtHelper");
 const { sendResponse } = require("../utils/responseHelper");
 
 const { Op, fn, literal, col } = require("sequelize");
@@ -28,7 +29,7 @@ const searchRestaurants = async (req, res) => {
     }
 
     const restaurants = await Restaurant.findAll({
-      attributes: ["id", "name","logo"],
+      attributes: ["id", "name", "logo"],
       where: whereClause,
     });
 
@@ -77,7 +78,7 @@ const createBranch = async (req, res) => {
       facebook_url,
       instagram_url,
       google_feedback_url,
-      pdf_menu_url 
+      pdf_menu_url
     } = req.body;
 
     let finalRestaurantId = restaurant_id;
@@ -139,7 +140,7 @@ const createBranch = async (req, res) => {
         restaurant_id: finalRestaurantId,
         name: branch_name,
         phone: phone,
-        email:restaurant_email,
+        email: restaurant_email,
         country,
         state,
         district,
@@ -169,13 +170,32 @@ const createBranch = async (req, res) => {
       { transaction }
     );
 
-  await User.update(
-  { branch_id: newBranch.id },
-  {
-    where: { id: userId },
-    transaction,
-  }
-);
+    await User.update(
+      { branch_id: newBranch.id },
+      {
+        where: { id: userId },
+        transaction,
+      }
+    );
+
+    const user = await User.findByPk(userId, { transaction });
+
+    console.log(user);
+
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
 
     await transaction.commit();
 
@@ -275,7 +295,7 @@ const updateBranchAndSettings = async (req, res) => {
       district,
       city,
       place,
-description,
+      description,
       // SETTINGS editable fields (including LOGO)
       settings_logo,
       currency,
@@ -376,7 +396,7 @@ const getAnalytics = async (req, res) => {
 
     // 1) categories
     const totalCategories = await Category.count({
-      where: { branch_id: branchId, is_active:true },
+      where: { branch_id: branchId, is_active: true },
     });
 
     // 2) items (through category)

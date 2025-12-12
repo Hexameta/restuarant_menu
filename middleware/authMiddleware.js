@@ -8,13 +8,15 @@ const authMiddleware = (req, res, next) => {
     "/api/v1/users/check",
     "/api/v1/users/verify-otp",
     "/api/v1/restaurant/search",
-    "/api/v1/menu/"
+    "/api/v1/menu/",
+    "/api/v1/users"
   ];
 
   const publicGetPaths = [
   ];
 
   if (publicPaths.some((path) => req.path.startsWith(path))) {
+    console.log("public path", req.path);
     return next();
   }
 
@@ -78,7 +80,9 @@ const authMiddleware = (req, res, next) => {
     decoded = refreshDecoded;
   }
 
-  if (!decoded.branchId) {
+  console.log(decoded);
+  
+  if (!decoded.branchId && !decoded.newUser) {
     return sendResponse(res, 401, "Branch id missing in token.");
   }
 

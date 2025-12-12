@@ -14,6 +14,7 @@ const generateAccessToken = (user) => {
     userId: user.id,
     email: user.email,
     branchId: user.branch_id,
+    newUser: user.newUser ? true : false,
   };
   return jwt.sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: JWT_ACCESS_EXPIRATION });
 };
@@ -23,6 +24,7 @@ const generateRefreshToken = (user) => {
     userId: user.id,
     email: user.email,
     branchId: user.branch_id,
+    newUser: user.newUser ? true : false,
   };
   return jwt.sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: JWT_REFRESH_EXPIRATION });
 };
