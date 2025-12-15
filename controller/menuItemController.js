@@ -1,4 +1,4 @@
-const { MenuItem } = require("../model/menuItemModel");
+const { MenuItem, Options } = require("../model/menuItemModel");
 const { Category } = require("../model/categoryModel");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
 const { Op } = require("sequelize");
@@ -14,8 +14,9 @@ const createMenuItem = async (req, res) => {
       name,
       description,
       image_url,
-      price,
-      offer_price,
+      options,
+      // price,
+      // offer_price,
       is_available,
       special_note,
       tag,
@@ -48,12 +49,23 @@ const createMenuItem = async (req, res) => {
       name,
       description: description || null,
       image_url: image_url || null,
-      price: price || null,
-      offer_price: offer_price || null,
+      // price: price || null,
+      // offer_price: offer_price || null,
       is_available: is_available ?? true,
       special_note: special_note || null,
       tag: tag || null,
     });
+
+    const itemId = item.id;
+
+    if (options && options.length > 0) {
+      await Options.bulkCreate(
+        options.map((option) => ({
+          ...option,
+          menu_item_id: itemId,
+        }))
+      );
+    }
 
     return sendResponse(res, 201, "Menu item created successfully", item);
 
@@ -94,7 +106,11 @@ const getMenuItems = async (req, res) => {
         {
           model: Category,
           where: categoryCondition, // applied only if branch_id provided
-        }
+        },
+        {
+          model: Options,
+          as: 'menu_item_options',
+        },
       ],
       limit,
       offset,
@@ -123,6 +139,12 @@ const getItemsByCategory = async (req, res) => {
 
     const items = await MenuItem.findAll({
       where: { category_id },
+      include: [
+        {
+          model: Options,
+          as: 'menu_item_options',
+        },
+      ],
       order: [["id", "DESC"]],
     });
 
@@ -140,7 +162,13 @@ const getMenuItemById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const item = await MenuItem.findByPk(id);
+    const item = await MenuItem.findByPk(id, {
+      include: [
+        {
+          model: Options,
+        },
+      ],
+    });
     if (!item) {
       return sendResponse(res, 404, "Menu item not found");
     }
@@ -181,7 +209,19 @@ const updateMenuItem = async (req, res) => {
       }
     }
 
-    await item.update(req.body);
+    const { options, ...rest } = req.body;
+
+    await item.update(rest);
+
+    if (options && options.length > 0) {
+      await Options.destroy({ where: { menu_item_id: id } });
+      await Options.bulkCreate(
+        options.map((option) => ({
+          ...option,
+          menu_item_id: id,
+        }))
+      );
+    }
 
     return sendResponse(res, 200, "Menu item updated successfully", item);
 
@@ -206,6 +246,7 @@ const deleteMenuItem = async (req, res) => {
     }
     const fileName = item.image_url;
    await item.destroy(); // ❗ actual delete
+   await Options.destroy({ where: { menu_item_id: id } });
 
     return sendResponse(res, 200, "Menu item deleted successfully");
 

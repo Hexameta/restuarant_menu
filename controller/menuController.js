@@ -1,6 +1,6 @@
 const { Ads } = require("../model/adsModal");
 const { Category } = require("../model/categoryModel");
-const { MenuItem } = require("../model/menuItemModel");
+const { MenuItem, Options } = require("../model/menuItemModel");
 const { Branch, Settings } = require("../model/resturantModel");
 const { SpecialTag, SpecialTagItem } = require("../model/specialTagModel");
 const { MenuAccessLog } = require("../model/menuAccessLogModel");
@@ -99,7 +99,12 @@ const getMenuItemsByBranchIdForMenu = async (req, res) => {
                     branch_id: branchId
                 },
                 attributes: []
-            }]
+            },
+            {
+                model: Options,
+                as: 'menu_item_options',
+            }
+        ]
         });
 
         return sendResponse(res, 200, "Menu items fetched successfully", menuItems);
@@ -129,7 +134,13 @@ const getSpecialMenuItemsByBranchId = async (req, res) => {
                     include: [
                         {
                             model: MenuItem,
-                            as: "menu_item"
+                            as: "menu_item",
+                            include: [
+                                {
+                                    model: Options,
+                                    as: "menu_item_options",
+                                }
+                            ]
                         }
                     ]
                 }
