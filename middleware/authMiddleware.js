@@ -2,6 +2,11 @@ const { verifyToken, generateAccessToken } = require("../utils/jwtHelper");
 const { sendResponse } = require("../utils/responseHelper");
 
 const authMiddleware = (req, res, next) => {
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  
   // Check for excluded routes
   const publicPaths = [
     "/api/v1/users/signin",
