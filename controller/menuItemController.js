@@ -245,10 +245,12 @@ const deleteMenuItem = async (req, res) => {
       });
     }
     const fileName = item.image_url;
-   await item.destroy(); // ❗ actual delete
-   await Options.destroy({ where: { menu_item_id: id } });
+        await Options.destroy({
+      where: { menu_item_id: id },
+    });
+   await item.destroy(); 
 
-    return sendResponse(res, 200, "Menu item deleted successfully");
+     sendResponse(res, 200, "Menu item deleted successfully");
 
      if (fileName) {
   checkMenuItemImageExistsDB(fileName).then((exists) => {
