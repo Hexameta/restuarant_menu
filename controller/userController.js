@@ -8,7 +8,10 @@ const {
 } = require("../utils/otpHandler");
 const { sendResponse } = require("../utils/responseHelper");
 const bcrypt = require("bcrypt");
-const { generateAccessToken, generateRefreshToken } = require("../utils/jwtHelper");
+const {
+  generateAccessToken,
+  generateRefreshToken,
+} = require("../utils/jwtHelper");
 
 const checkUser = async (req, res) => {
   try {
@@ -24,33 +27,30 @@ const checkUser = async (req, res) => {
     if (user) {
       return sendResponse(res, 400, "Mail id already exist! Try to Sign in");
     }
-      
-      
-      // User does not exist, initiate OTP flow
-      const otp = generateOTP();
-      const expiration = getOTPExpiration();
 
-      // Save OTP to DB
-      const otpRecord = await OTPValidate.create({
-        otp: otp,
+    // User does not exist, initiate OTP flow
+    const otp = generateOTP();
+    const expiration = getOTPExpiration();
+
+    // Save OTP to DB
+    const otpRecord = await OTPValidate.create({
+      otp: otp,
+      email: email,
+      is_validate: false,
+      expiration_time: expiration,
+    });
+
+    // Send OTP Email
+    const emailSent = await sendOTPEmail(email, otp);
+
+    if (emailSent) {
+      return sendResponse(res, 200, "OTP sent to email", {
+        otpId: otpRecord.id,
         email: email,
-        is_validate: false,
-        expiration_time: expiration,
       });
-
-      // Send OTP Email
-      const emailSent = await sendOTPEmail(email, otp);
-
-      if (emailSent) {
-        return sendResponse(res, 200, "OTP sent to email", {
-          otpId: otpRecord.id,
-          otp,
-          email: email,
-        });
-      } else {
-        return sendResponse(res, 500, "Failed to send OTP email");
-      }
-    
+    } else {
+      return sendResponse(res, 500, "Failed to send OTP email");
+    }
   } catch (error) {
     console.error("Error in checkUser:", error);
     return sendResponse(res, 500, "Internal Server Error", {
@@ -79,18 +79,16 @@ const signin = async (req, res) => {
       return sendResponse(res, 400, "Invalid password");
     }
 
-
-    let tokenPayload = {}
+    let tokenPayload = {};
     console.log(user.branch_id);
-    
 
-    if(user.branch_id !== null){
+    if (user.branch_id !== null) {
       tokenPayload = {
         id: user.id,
         email: user.email,
         branch_id: user.branch_id,
       };
-    }else{
+    } else {
       tokenPayload = {
         id: user.id,
         email: user.email,
@@ -100,28 +98,24 @@ const signin = async (req, res) => {
     }
 
     console.log(tokenPayload);
-    
 
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
 
     console.log(accessToken);
     console.log(refreshToken);
-    
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       secure: false,
-
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-
     });
 
     return sendResponse(res, 200, "User signed in successfully", {
@@ -189,22 +183,19 @@ const verifyOTPAndRegister = async (req, res) => {
       branch_id: null, // Default null as per flow
     });
 
-
-
     // Mark OTP as validated
     await otpRecord.update({ is_validate: true });
 
-    let tokenPayload = {}
+    let tokenPayload = {};
     console.log(user.branch_id);
-    
 
-    if(user.branch_id !== null){
+    if (user.branch_id !== null) {
       tokenPayload = {
         id: user.id,
         email: user.email,
         branch_id: user.branch_id,
       };
-    }else{
+    } else {
       tokenPayload = {
         id: user.id,
         email: user.email,
@@ -214,7 +205,6 @@ const verifyOTPAndRegister = async (req, res) => {
     }
 
     console.log(tokenPayload);
-    
 
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
