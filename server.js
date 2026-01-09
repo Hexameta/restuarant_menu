@@ -4,8 +4,9 @@ var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 var cors = require("cors");
-var { syncDatabase } = require("./utils/syncDb.js");
+
 const { authMiddleware } = require("./middleware/authMiddleware");
+
 var indexRouter = require("./routes/index.js");
 var usersRouter = require("./routes/users.js");
 var restaurantRouter = require("./routes/restaurantRoute");
@@ -15,51 +16,57 @@ var menuItemRouter = require("./routes/menuItemRoute.js");
 var specialTagRouter = require("./routes/specialTagRoutes.js");
 var adsRouter = require("./routes/ads.js");
 var menuRouter = require("./routes/menu.js");
+
 var app = express();
 
-// syncDatabase();
-
-// view engine setup
+/* -------------------- VIEW ENGINE -------------------- */
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
+/* -------------------- BASIC MIDDLEWARE -------------------- */
 app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "http://localhost:5001"); // Adjust this to your frontend's origin
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header(
-    "Access-Control-Allow-Methods",
-    "GET,HEAD,OPTIONS,POST,PUT,PATCH,DELETE"
-  );
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  next();
+/* -------------------- CORS (FINAL) -------------------- */
+const allowedOrigins = [
+  "https://admin.digifymenu.com",
+  "https://menu.digifymenu.com",
+];
+
+const corsMiddleware = cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // Postman, curl
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+    "Origin",
+  ],
 });
 
-// Enable CORS for development frontend on port 5173 (Vite)
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "http://localhost:5174",
-      "http://127.0.0.1:5174",
-    ],
-    //  origin: ['http://localhost:4000', 'http://localhost:3000'],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    credentials: true,
-  })
-);
+/* 🔥 CORS MUST COME BEFORE AUTH */
+app.use(corsMiddleware);
 
+/* 🔥 EXPLICIT OPTIONS HANDLER (MANDATORY) */
+app.options("*", corsMiddleware);
+
+/* -------------------- AUTH -------------------- */
 app.use(authMiddleware);
 
+/* -------------------- ROUTES -------------------- */
 app.use("/", indexRouter);
 app.use("/api/v1/users", usersRouter);
 app.use("/api/v1/restaurant", restaurantRouter);
@@ -70,18 +77,15 @@ app.use("/api/v1/special-tag", specialTagRouter);
 app.use("/api/v1/ads", adsRouter);
 app.use("/api/v1/menu", menuRouter);
 
-// catch 404 and forward to error handler
+/* -------------------- 404 -------------------- */
 app.use(function (req, res, next) {
   next(createError(404));
 });
 
-// error handler
+/* -------------------- ERROR HANDLER -------------------- */
 app.use(function (err, req, res, next) {
-  // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get("env") === "development" ? err : {};
-
-  // render the error page
   res.status(err.status || 500);
   res.render("error");
 });
