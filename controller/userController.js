@@ -176,7 +176,7 @@ const verifyOTPAndRegister = async (req, res) => {
     // OTP is valid, register user
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = await User.create({
+    const user = await User.create({
       email: email,
       Password: hashedPassword, // Note: Model uses 'Password' with capital P based on file view
       username: email.split("@")[0], // Default username
@@ -222,7 +222,7 @@ const verifyOTPAndRegister = async (req, res) => {
     });
 
     return sendResponse(res, 201, "User registered successfully", {
-      user: newUser,
+      user: user,
       status: null,
     });
   } catch (error) {
