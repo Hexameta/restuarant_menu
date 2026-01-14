@@ -1,48 +1,47 @@
 const { Category } = require("../model/categoryModel");
 const { Branch } = require("../model/resturantModel");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
-const { Op } = require("sequelize");
 const { sendResponse } = require("../utils/responseHelper");
+const mongoose = require("mongoose");
 
 // =============================
 // CREATE CATEGORY
 // =============================
 const createCategory = async (req, res) => {
   try {
-    const branch_id = req.user.branchId
-    const {  name, image_url, display_order } = req.body;
+    const branch_id = req.user.branchId;
+    const { name, image_url, display_order } = req.body;
 
     if (!branch_id || !name) {
       return sendResponse(res, 400, "branch_id and name are required");
     }
 
     // Check branch exists
-    const branch = await Branch.findByPk(branch_id);
+    const branch = await Branch.findById(branch_id);
     if (!branch) {
       return sendResponse(res, 404, "Branch not found");
     }
 
-        // Case-insensitive category check
+    // Case-insensitive category check
     const exists = await Category.findOne({
-      where: {
-        branch_id,
-        is_active: true,
-        name: { [Op.iLike]: name.trim() }   // matches "Pizza" and "pizza"
-      }
+      branch_id,
+      is_active: true,
+      name: { $regex: new RegExp(`^${name.trim()}$`, "i") } // Exact match, case insensitive
     });
 
     if (exists) {
       return sendResponse(res, 400, `Category "${name}" already exists in this branch`);
     }
 
-
-    const category = await Category.create({
+    const category = new Category({
       branch_id,
       name,
       image_url: image_url || null,
       is_active: true,
       display_order: display_order || 0,
     });
+
+    await category.save();
 
     return sendResponse(res, 201, "Category created successfully", category);
   } catch (error) {
@@ -56,24 +55,24 @@ const createCategory = async (req, res) => {
 // =============================
 const getCategories = async (req, res) => {
   try {
-    // const { branch_id } = req.params;
-    const branch_id = req.user.branchId; 
+    const branch_id = req.user.branchId;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
-    const { rows, count } = await Category.findAndCountAll({
-      where: { branch_id, is_active: true },
-      limit,
-      offset,
-      order: [["display_order", "ASC"]],
-    });
+    const filter = { branch_id, is_active: true };
+
+    const totalCount = await Category.countDocuments(filter);
+    const rows = await Category.find(filter)
+      .sort({ display_order: 1 }) // ASC
+      .skip(skip)
+      .limit(limit);
 
     return sendResponse(res, 200, "Categories fetched successfully", rows, {
-      totalCount: count,
+      totalCount: totalCount,
       currentPage: page,
       pageSize: limit,
-      totalPages: Math.ceil(count / limit),
+      totalPages: Math.ceil(totalCount / limit),
     });
   } catch (error) {
     return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
@@ -88,7 +87,7 @@ const getCategoryById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const category = await Category.findByPk(id);
+    const category = await Category.findById(id);
     if (!category) {
       return res.status(404).json({
         success: false,
@@ -111,7 +110,7 @@ const updateCategory = async (req, res) => {
     const { id } = req.params;
     const { name, image_url, is_active, display_order } = req.body;
 
-    const category = await Category.findByPk(id);
+    const category = await Category.findById(id);
     if (!category) {
       return sendResponse(res, 404, "Category not found");
     }
@@ -119,12 +118,10 @@ const updateCategory = async (req, res) => {
     // If user changed the name → check for duplicates
     if (name && name.trim().toLowerCase() !== category.name.toLowerCase()) {
       const existing = await Category.findOne({
-        where: {
-          branch_id: category.branch_id,
-           is_active: true,
-          name: { [Op.iLike]: name.trim() },
-          id: { [Op.ne]: id }, // exclude current id
-        },
+        branch_id: category.branch_id,
+        is_active: true,
+        name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
+        _id: { $ne: id }, // exclude current id
       });
 
       if (existing) {
@@ -132,12 +129,12 @@ const updateCategory = async (req, res) => {
       }
     }
 
-    await category.update({
-      name: name ? name.trim().replace(/\s+/g, " ") : category.name,
-      image_url: image_url ?? category.image_url,
-      is_active: is_active ?? category.is_active,
-      display_order: display_order ?? category.display_order,
-    });
+    if(name) category.name = name.trim().replace(/\s+/g, " ");
+    if(image_url !== undefined) category.image_url = image_url;
+    if(is_active !== undefined) category.is_active = is_active;
+    if(display_order !== undefined) category.display_order = display_order;
+
+    await category.save();
 
     return sendResponse(res, 200, "Category updated successfully", category);
   } catch (error) {
@@ -145,6 +142,7 @@ const updateCategory = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
   }
 };
+
 // =============================
 // DELETE CATEGORY (SOFT DELETE)
 // =============================
@@ -152,12 +150,13 @@ const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const category = await Category.findByPk(id);
+    const category = await Category.findById(id);
     if (!category) {
       return sendResponse(res, 404, "Category not found");
     }
 
-    await category.update({ is_active: false });
+    category.is_active = false;
+    await category.save();
 
     return sendResponse(res, 200, "Category deleted successfully");
   } catch (error) {
@@ -170,9 +169,8 @@ const deleteCategory = async (req, res) => {
 const searchCategory = async (req, res) => {
   try {
     const searchId = req.params.id || null;
-     let  branch_id = null
+    let branch_id = null
     if(searchId){
-
       branch_id = req.user.branchId; 
     }
     const q = req.query.q || "";
@@ -182,20 +180,18 @@ const searchCategory = async (req, res) => {
     }
 
     // ----- BUILD WHERE CONDITION SAFELY -----
-    const whereCondition = {
-      name: { [Op.iLike]: `%${q}%` },
-       is_active: true,
+    const filter = {
+      name: { $regex: q, $options: "i" },
+      is_active: true,
     };
 
     if (branch_id) {
-      whereCondition.branch_id = branch_id;
+      filter.branch_id = branch_id;
     }
 
-    const categories = await Category.findAll({
-      where: whereCondition,
-      order: [["name", "ASC"]],
-      limit: 10,
-    });
+    const categories = await Category.find(filter)
+      .sort({ name: 1 })
+      .limit(10);
 
     return sendResponse(res, 200, "Categories fetched successfully", categories);
 
@@ -212,18 +208,16 @@ const checkCategoryImageExistsDB = async (fileName, id = null) => {
       return { success: false, exists: false };
     }
 
-    const whereCondition = {
+    const filter = {
       image_url: fileName,
     };
 
     // If editing — exclude the current category
     if (id) {
-      whereCondition.id = { [Op.ne]: id };  // id != this record
+      filter._id = { $ne: id };
     }
 
-    const exists = await Category.findOne({
-      where: whereCondition,
-    });
+    const exists = await Category.findOne(filter);
 
     return {
       success: true,
@@ -250,12 +244,14 @@ const reOrderCategory = async (req, res) => {
       return sendResponse(res, 400, "orderedIds must be array");
     }
 
-    for (let index = 0; index < orderedIds.length; index++) {
-      await Category.update(
-        { display_order: index },
-        { where: { id: orderedIds[index] } }
-      );
-    }
+    const bulkOps = orderedIds.map((id, index) => ({
+        updateOne: {
+            filter: { _id: id },
+            update: { display_order: index }
+        }
+    }));
+
+    await Category.bulkWrite(bulkOps);
 
     return sendResponse(res, 200, "Category priority updated");
   } catch (err) {

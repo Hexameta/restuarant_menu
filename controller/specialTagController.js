@@ -1,8 +1,7 @@
-const { SpecialTag, SpecialTagItem } = require("../model/specialTagModel");
+const { SpecialTag } = require("../model/specialTagModel");
 const { Branch } = require("../model/resturantModel");
 const { MenuItem } = require("../model/menuItemModel");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
-const { Op } = require("sequelize");
 const { sendResponse } = require("../utils/responseHelper");
 
 // =============================
@@ -10,25 +9,22 @@ const { sendResponse } = require("../utils/responseHelper");
 // =============================
 const createSpecialTag = async (req, res) => {
   try {
-
-    const branch_id = req.user.branchId
-    const {  title, is_active, display_order } = req.body;
+    const branch_id = req.user.branchId;
+    const { title, is_active, display_order } = req.body;
 
     if (!branch_id || !title) {
       return sendResponse(res, 400, "branch_id and title are required");
     }
 
-    const branch = await Branch.findByPk(branch_id);
+    const branch = await Branch.findById(branch_id);
     if (!branch) {
       return sendResponse(res, 404, "Branch not found");
     }
 
     // DUPLICATE CHECK CASE INSENSITIVE
     const exists = await SpecialTag.findOne({
-      where: {
-        branch_id,
-        title: { [Op.iLike]: title.trim() }
-      }
+      branch_id,
+      title: { $regex: new RegExp(`^${title.trim()}$`, "i") }
     });
 
     if (exists) {
@@ -39,7 +35,8 @@ const createSpecialTag = async (req, res) => {
       branch_id,
       title,
       is_active: is_active ?? true,
-      display_order: display_order || 0
+      display_order: display_order || 0,
+      menu_items: []
     });
 
     return sendResponse(res, 201, "Special tag created successfully", tag);
@@ -56,13 +53,10 @@ const createSpecialTag = async (req, res) => {
 // =============================
 const getSpecialTags = async (req, res) => {
   try {
-    // const { branch_id } = req.params;
     const branch_id = req.user.branchId; 
 
-    const tags = await SpecialTag.findAll({
-      where: { branch_id },
-      order: [["display_order", "ASC"]],
-    });
+    const tags = await SpecialTag.find({ branch_id })
+      .sort({ display_order: 1 });
 
     return sendResponse(res, 200, "Special tags fetched successfully", tags);
 
@@ -78,7 +72,7 @@ const getSpecialTags = async (req, res) => {
 const updateSpecialTag = async (req, res) => {
   try {
     const { id } = req.params;
-    const tag = await SpecialTag.findByPk(id);
+    const tag = await SpecialTag.findById(id);
 
     if (!tag) {
       return sendResponse(res, 404, "Special tag not found");
@@ -88,18 +82,17 @@ const updateSpecialTag = async (req, res) => {
 
     if (title && title.trim()) {
       const exists = await SpecialTag.findOne({
-        where: {
-          title: { [Op.iLike]: title.trim() },
-          branch_id: tag.branch_id,
-          id: { [Op.not]: id }
-        }
+        title: { $regex: new RegExp(`^${title.trim()}$`, "i") },
+        branch_id: tag.branch_id,
+        _id: { $ne: id }
       });
       if (exists) {
         return sendResponse(res, 409, "Another tag with this name already exists");
       }
     }
 
-    await tag.update(req.body);
+    Object.assign(tag, req.body);
+    await tag.save();
 
     return sendResponse(res, 200, "Special tag updated successfully", tag);
 
@@ -116,13 +109,10 @@ const deleteSpecialTag = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const tag = await SpecialTag.findByPk(id);
+    const tag = await SpecialTag.findByIdAndDelete(id);
     if (!tag) {
       return sendResponse(res, 404, "Special tag not found");
     }
-
-    await SpecialTagItem.destroy({ where: { special_tag_id: id } });
-    await tag.destroy();
 
     return sendResponse(res, 200, "Special tag deleted successfully");
 
@@ -139,14 +129,16 @@ const getSpecialTagItems = async (req, res) => {
   try {
     const { tag_id } = req.params;
 
-    const items = await SpecialTagItem.findAll({
-      where: { special_tag_id: tag_id },
-      include: [
-        { model: MenuItem, as: "menu_item", attributes: ["id", "name", "image_url"] }
-      ]
+    const tag = await SpecialTag.findById(tag_id).populate({
+      path: 'menu_items',
+      select: 'name image_url'
     });
 
-    return sendResponse(res, 200, "Special tag items fetched successfully", items);
+    if (!tag) {
+      return sendResponse(res, 404, "Special tag not found");
+    }
+
+    return sendResponse(res, 200, "Special tag items fetched successfully", tag.menu_items || []);
 
   } catch (error) {
     return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
@@ -165,14 +157,10 @@ const assignSpecialItems = async (req, res) => {
       return sendResponse(res, 400, "special_tag_id & menu_item_ids required");
     }
 
-    const insertData = menu_item_ids.map((menu_item_id) => ({
-      special_tag_id,
-      menu_item_id,
-    }));
-
-    await SpecialTagItem.bulkCreate(insertData, {
-      ignoreDuplicates: true,
-    });
+    await SpecialTag.updateOne(
+      { _id: special_tag_id },
+      { $addToSet: { menu_items: { $each: menu_item_ids } } }
+    );
 
     return sendResponse(res, 200, "Items assigned successfully");
 
@@ -193,9 +181,10 @@ const removeSpecialItem = async (req, res) => {
       return sendResponse(res, 400, "special_tag_id & menu_item_id are required");
     }
 
-    await SpecialTagItem.destroy({
-      where: { special_tag_id, menu_item_id },
-    });
+    await SpecialTag.updateOne(
+      { _id: special_tag_id },
+      { $pull: { menu_items: menu_item_id } }
+    );
 
     return sendResponse(res, 200, "Item removed from tag");
 

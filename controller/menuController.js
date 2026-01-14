@@ -1,42 +1,25 @@
 const { Ads } = require("../model/adsModal");
 const { Category } = require("../model/categoryModel");
-const { MenuItem, Options } = require("../model/menuItemModel");
-const { Branch, Settings } = require("../model/resturantModel");
-const { SpecialTag, SpecialTagItem } = require("../model/specialTagModel");
+const { MenuItem } = require("../model/menuItemModel");
+const { Branch, Restaurant } = require("../model/resturantModel");
+const { SpecialTag } = require("../model/specialTagModel");
 const { MenuAccessLog } = require("../model/menuAccessLogModel");
 const { sendResponse } = require("../utils/responseHelper");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
 
-
 // Helper to get branch ID from slug
 const getBranchIdFromSlug = async (slug) => {
-    const branch = await Branch.findOne({
-        where: {
-            slug: slug,
-            is_active: true
-        },
-        attributes: ['id']
-    });
-    return branch ? branch.id : null;
+    const branch = await Branch.findOne({ slug: slug, is_active: true }).select('_id').lean();
+    return branch ? branch._id : null;
 };
 
-// API for Restaurant Details (assuming a restaurant has multiple branches, and we fetch by branch slug)
+// API for Restaurant Details
 const getBranchDetailsByslug = async (req, res) => {
     try {
-        const {
-            slug
-        } = req.params;
+        const { slug } = req.params;
 
-        const branch = await Branch.findOne({
-            where: {
-                slug: slug,
-                is_active: true
-            },
-            include: [{
-                model: Settings,
-                as: 'settings'
-            }]
-        });
+        const branch = await Branch.findOne({ slug: slug, is_active: true }).lean();
+        // Settings are embedded, so we already have them in branch.settings
 
         if (!branch) {
             return sendResponse(res, 404, "Branch not found");
@@ -50,14 +33,9 @@ const getBranchDetailsByslug = async (req, res) => {
 };
 
 
-// Refactored Category API to use branchSlug and then categoryId (or category slug if Categories are unique per branch)
-// Assuming categories are unique per branch and `slug` refers to the category's own slug,
-// but we first find the branch by its slug.
 const getCategoriesbyIdForMenu = async (req, res) => {
     try {
-        const {
-            branchId
-        } = req.params;
+        const { branchId } = req.params;
 
         if (!branchId) {
             return res.status(400).json({
@@ -66,12 +44,12 @@ const getCategoriesbyIdForMenu = async (req, res) => {
             });
         }
 
-        const category = await Category.findAll({
-            where: {
-                branch_id: branchId,
-                is_active: true
-            },
-        });
+        const category = await Category.find({
+            branch_id: branchId,
+            is_active: true
+        })
+        .sort({ display_order: 1 })
+        .lean();
 
         return sendResponse(res, 200, "Categories fetched successfully", category);
     } catch (error) {
@@ -83,29 +61,23 @@ const getCategoriesbyIdForMenu = async (req, res) => {
 // API for Menu Items (fetching all menu items for a specific branch)
 const getMenuItemsByBranchIdForMenu = async (req, res) => {
     try {
-        const {
-            branchId
-        } = req.params;
+        const { branchId } = req.params;
 
         if (!branchId) {
             return sendResponse(res, 404, "Branch not found");
         }
 
-        const menuItems = await MenuItem.findAll({
-            include: [{
-                model: Category,
-                as: 'category',
-                where: {
-                    branch_id: branchId
-                },
-                attributes: []
-            },
-            {
-                model: Options,
-                as: 'menu_item_options',
-            }
-        ]
-        });
+        // Get all categories for this branch
+        const branchCategories = await Category.find({ branch_id: branchId }).select('_id').lean();
+        const categoryIds = branchCategories.map(c => c._id);
+
+        // Get Menu Items
+        const menuItems = await MenuItem.find({
+            category_id: { $in: categoryIds },
+            is_available: true
+        })
+        .populate({ path: 'category_id', select: 'name' })
+        .lean();
 
         return sendResponse(res, 200, "Menu items fetched successfully", menuItems);
     } catch (error) {
@@ -116,43 +88,29 @@ const getMenuItemsByBranchIdForMenu = async (req, res) => {
 
 const getSpecialMenuItemsByBranchId = async (req, res) => {
     try {
-        const {
-            branchId
-        } = req.params;
+        const { branchId } = req.params;
 
         if (!branchId) {
             return sendResponse(res, 400, "Branch ID is required");
         }
 
-        const specialMenuItems = await SpecialTag.findAll({
-            where: { branch_id: branchId },
-            order: [["display_order", "ASC"]],
-            include: [
-                {
-                    model: SpecialTagItem,
-                    as: "special_items",
-                    include: [
-                        {
-                            model: MenuItem,
-                            as: "menu_item",
-                            include: [
-                                {
-                                    model: Options,
-                                    as: "menu_item_options",
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        });
+        // In the new model, SpecialTag has `menu_items` array of References. 
+        // We populate that array.
+        const specialMenuItems = await SpecialTag.find({ branch_id: branchId })
+            .sort({ display_order: 1 })
+            .populate({
+                path: 'menu_items',
+                model: 'MenuItem', 
+                match: { is_available: true }, // Only populated available items
+                select: 'name image_url price offer_price description options tag' // Select necessary fields
+            })
+            .lean();
 
-
+        // Filter out tags that might have empty menu_items if desired, or just map
         const finalData = specialMenuItems.map(tag => ({
-            id: tag.id,
+            id: tag._id,
             title: tag.title,
-            special_items: tag.special_items
-                .map(item => item.menu_item)         
+            special_items: tag.menu_items
         }));
 
         return sendResponse(res, 200, "Special menu items fetched successfully", finalData);
@@ -164,19 +122,19 @@ const getSpecialMenuItemsByBranchId = async (req, res) => {
 
 const getCarasoulByBranchId = async (req, res) => {
     try {
-        const {
-            branchId
-        } = req.params;
+        const { branchId } = req.params;
 
         if (!branchId) {
             return sendResponse(res, 400, "Branch ID is required");
         }
 
-        const carasoulMenuItems = await Ads.findAll({
-            where: {
-                branch_id: branchId
-            }
-        });
+        const now = new Date();
+        const carasoulMenuItems = await Ads.find({ 
+            branch_id: branchId,
+            is_expired: false,
+            valid_from: { $lte: now },
+            valid_to: { $gte: now }
+        }).lean();
 
         return sendResponse(res, 200, "Carousel items fetched successfully", carasoulMenuItems);
     } catch (error) {
@@ -192,26 +150,21 @@ const logMenuAccess = async (req, res) => {
         const { slug } = req.params;
 
         // Find branch by slug
-        const branch = await Branch.findOne({
-            where: {
-                slug: slug,
-                is_active: true
-            },
-            attributes: ['id']
-        });
+        const branch = await Branch.findOne({ slug: slug, is_active: true }).select('_id');
 
         if (!branch) {
             return sendResponse(res, 404, "Branch not found");
         }
 
         // Create log entry
-        const logEntry = await MenuAccessLog.create({
-            branch_id: branch.id,
+        const logEntry = new MenuAccessLog({
+            branch_id: branch._id,
             accessed_at: new Date()
         });
+        await logEntry.save();
 
         return sendResponse(res, 201, "Menu access logged successfully", {
-            log_id: logEntry.id,
+            log_id: logEntry._id,
             branch_id: logEntry.branch_id,
             accessed_at: logEntry.accessed_at
         });
@@ -220,10 +173,6 @@ const logMenuAccess = async (req, res) => {
         return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
     }
 };
-
-
-
-
 
 module.exports = {
     getBranchDetailsByslug,

@@ -1,12 +1,11 @@
 const { Category } = require("../model/categoryModel");
 const { MenuAccessLog } = require("../model/menuAccessLogModel");
 const { MenuItem } = require("../model/menuItemModel");
-const { Restaurant, Branch, Settings } = require("../model/resturantModel");
+const { Restaurant, Branch } = require("../model/resturantModel");
 const { User } = require("../model/userModel");
 const { generateAccessToken, generateRefreshToken } = require("../utils/jwtHelper");
 const { sendResponse } = require("../utils/responseHelper");
-
-const { Op, fn, literal, col } = require("sequelize");
+const mongoose = require("mongoose");
 
 /**
  * Search Restaurants Controller
@@ -20,18 +19,16 @@ const searchRestaurants = async (req, res) => {
     if (search === "") {
       return sendResponse(res, 200, "Restaurants fetched successfully", []);
     }
-    let whereClause = {};
+    let filter = {};
 
     if (search) {
-      whereClause.name = {
-        [Op.iLike]: `%${search}%`, // Case-insensitive partial match
-      };
+      filter.name = { $regex: search, $options: "i" }; // Case-insensitive partial match
     }
 
-    const restaurants = await Restaurant.findAll({
-      attributes: ["id", "name", "logo"],
-      where: whereClause,
-    });
+    const restaurants = await Restaurant.find(filter).select("name logo");
+
+    // Map _id to id for frontend compatibility if needed, or just return as is
+    // Mongoose returns _id by default.
 
     return sendResponse(
       res,
@@ -53,7 +50,9 @@ const searchRestaurants = async (req, res) => {
  */
 const createBranch = async (req, res) => {
   const { userId } = req.params;
-  const transaction = await Restaurant.sequelize.transaction();
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const {
       restaurant_id,
@@ -82,19 +81,23 @@ const createBranch = async (req, res) => {
     } = req.body;
 
     let finalRestaurantId = restaurant_id;
+    let currentRestaurantName = restaurant_name;
 
     // 1. Handle Restaurant
     if (restaurant_id) {
       // Check if exists
-      const restaurant = await Restaurant.findByPk(restaurant_id);
+      const restaurant = await Restaurant.findById(restaurant_id).session(session);
       if (!restaurant) {
-        await transaction.rollback();
+        await session.abortTransaction();
+        session.endSession();
         return sendResponse(res, 404, "Restaurant not found");
       }
+      currentRestaurantName = restaurant.name;
     } else {
       // Create new Restaurant
       if (!restaurant_name) {
-        await transaction.rollback();
+        await session.abortTransaction();
+        session.endSession();
         return sendResponse(
           res,
           400,
@@ -102,63 +105,47 @@ const createBranch = async (req, res) => {
         );
       }
 
-      const newRestaurant = await Restaurant.create(
-        {
-          name: restaurant_name,
-          email: restaurant_email,
-          phone: phone,
-          type: restaurant_type,
-          logo: restaurant_logo,
-          status: "inactive", // Default as per requirement
-        },
-        { transaction }
-      );
+      const newRestaurant = new Restaurant({
+        name: restaurant_name,
+        email: restaurant_email,
+        phone: phone,
+        type: restaurant_type,
+        logo: restaurant_logo,
+        status: "inactive",
+      });
 
-      finalRestaurantId = newRestaurant.id;
+      await newRestaurant.save({ session });
+      finalRestaurantId = newRestaurant._id;
     }
 
     // 2. Create Branch
-    // Generate slug: restaurant name + country code + 3 random digits
-    // User said "resturant name + Country code + 3 digit"
-    // We need restaurant name. If we have ID, we might need to fetch it if we didn't already.
-    // If we created it, we have it.
-
-    let currentRestaurantName = restaurant_name;
-    if (restaurant_id && !currentRestaurantName) {
-      const r = await Restaurant.findByPk(restaurant_id);
-      currentRestaurantName = r.name;
-    }
-
     const countryCode = country ? country.substring(0, 2).toUpperCase() : "XX";
     const randomDigits = Math.floor(100 + Math.random() * 900);
     const slug = `${currentRestaurantName
       .replace(/\s+/g, "-")
       .toLowerCase()}-${countryCode}-${randomDigits}`;
 
-    const newBranch = await Branch.create(
-      {
-        restaurant_id: finalRestaurantId,
-        name: branch_name,
-        phone: phone,
-        email: restaurant_email,
-        country,
-        state,
-        district,
-        city,
-        place,
-        slug,
-        status: "pending", // Default as per requirement
-        isActive: true, // Default as per requirement
-      },
-      { transaction }
-    );
-
-    // 3. Create Settings
-    await Settings.create(
-      {
-        branch_id: newBranch.id,
-        logo: restaurant_logo, // Assuming branch logo is same as restaurant logo initially? Or passed separately?
-        // User didn't specify branch logo input, but table has it. I'll use restaurant_logo or null.
+    const newBranch = new Branch({
+      restaurant_id: finalRestaurantId,
+      name: branch_name,
+      phone: phone,
+      email: restaurant_email,
+      country,
+      state,
+      district,
+      city,
+      place,
+      slug,
+      status: "pending",
+      isActive: true, // Note: Schema uses 'is_active', check consistency. Model defined 'is_active', ensure frontend sends right key or map it.
+      // Mapping 'isActive' input to 'is_active' in schema if needed, but schema has 'is_active'.
+      // If code used isActive, let's stick to is_active in Mongoose schema for consistency with SQL column request?
+      // Checking resturantModel.js: branchSchema has `is_active`.
+      is_active: true,
+      
+      // Embedded Settings
+      settings: {
+        logo: restaurant_logo, 
         currency,
         symbol,
         symbol_position,
@@ -166,24 +153,27 @@ const createBranch = async (req, res) => {
         instagram_url,
         google_feedback_url,
         pdf_menu_url
-      },
-      { transaction }
-    );
-
-    await User.update(
-      { branch_id: newBranch.id },
-      {
-        where: { id: userId },
-        transaction,
       }
-    );
+    });
 
-    const user = await User.findByPk(userId, { transaction });
+    await newBranch.save({ session });
+
+    // Update User
+    await User.findByIdAndUpdate(userId, { branch_id: newBranch._id }, { session });
+
+    const user = await User.findById(userId).session(session);
 
     console.log(user);
 
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+    // Mongoose objects are BSON, need .toObject() or direct access usually works but better to be safe for JWT
+    const userPayload = {
+        id: user._id,
+        email: user.email,
+        branch_id: user.branch_id
+    };
+
+    const accessToken = generateAccessToken(userPayload);
+    const refreshToken = generateRefreshToken(userPayload);
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
@@ -197,43 +187,43 @@ const createBranch = async (req, res) => {
       sameSite: "strict",
     });
 
-    await transaction.commit();
+    await session.commitTransaction();
+    session.endSession();
 
     return sendResponse(res, 201, "Branch created successfully", {
       branch: newBranch,
       restaurant_id: finalRestaurantId,
     });
   } catch (error) {
-    await transaction.rollback();
+    if (session.inTransaction()) {
+        await session.abortTransaction();
+    }
+    session.endSession();
     console.error("Create branch error:", error);
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
-      details: error.errors ? error.errors.map((e) => e.message) : null,
     });
   }
 };
+
 const getResturantById = async (req, res) => {
   try {
     const { branchId } = req.user;
-    const restaurant = await Branch.findOne({
-      where: {
-        id: branchId,
-      },
-    });
-    const settings = await Settings.findOne({
-      where: {
-        branch_id: restaurant.id,
-      },
-    });
+    
+    // In Mongoose, settings are embedded in Branch
+    const restaurant = await Branch.findById(branchId);
+
     if (!restaurant) {
       return sendResponse(res, 404, "Restaurant not found");
     }
-    if (!settings) {
-      return sendResponse(res, 404, "Settings not found");
-    }
+
+    // Return structure similar to before: restaurant (branch info) and settings
+    // Since settings is inside restaurant (branch), we can extract it or return the whole object
+    // Original code returned { restaurant, settings } where restaurant was branch
+    
     return sendResponse(res, 200, "Restaurant fetched successfully", {
-      restaurant,
-      settings,
+      restaurant: restaurant,
+      settings: restaurant.settings,
     });
   } catch (error) {
     console.error("Get restaurant error:", error);
@@ -250,18 +240,16 @@ const checkRestaurantsImageExistDB = async (fileName, id = null) => {
       return { success: false, exists: false };
     }
 
-    const whereCondition = {
-      logo: fileName,
+    const filter = {
+      "settings.logo": fileName,
     };
 
-    // If editing — exclude the current category
+    // If editing — exclude the current branch
     if (id) {
-      whereCondition.id = { [Op.ne]: id };  // id != this record
+      filter._id = { $ne: id };
     }
 
-    const exists = await Settings.findOne({
-      where: whereCondition,
-    });
+    const exists = await Branch.findOne(filter); // Check if any branch uses this logo in settings
 
     return {
       success: true,
@@ -281,8 +269,8 @@ const checkRestaurantsImageExistDB = async (fileName, id = null) => {
 
 const updateBranchAndSettings = async (req, res) => {
   const { branchId } = req.user;
-
-  const transaction = await Branch.sequelize.transaction();
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
   try {
     const {
@@ -308,66 +296,52 @@ const updateBranchAndSettings = async (req, res) => {
 
     } = req.body;
 
-    // ----------------------------------------------------------------------
-    // FIND BRANCH
-    // ----------------------------------------------------------------------
-    const branch = await Branch.findByPk(branchId);
+    const branch = await Branch.findById(branchId).session(session);
+
     if (!branch) {
-      await transaction.rollback();
+      await session.abortTransaction();
+      session.endSession();
       return sendResponse(res, 404, "Branch not found");
     }
 
-    // ----------------------------------------------------------------------
-    // UPDATE BRANCH ONLY
-    // ----------------------------------------------------------------------
-    await branch.update(
-      {
-        name: branch_name ?? branch.name,
-        phone: branch_phone ?? branch.phone,
-        email: branch_email ?? branch.email,
-        country: country ?? branch.country,
-        state: state ?? branch.state,
-        district: district ?? branch.district,
-        city: city ?? branch.city,
-        place: place ?? branch.place,
-        description: description ?? branch.description,
-      },
-      { transaction }
-    );
+    // Update Branch Fields
+    if(branch_name) branch.name = branch_name;
+    if(branch_phone) branch.phone = branch_phone;
+    if(branch_email) branch.email = branch_email;
+    if(country) branch.country = country;
+    if(state) branch.state = state;
+    if(district) branch.district = district;
+    if(city) branch.city = city;
+    if(place) branch.place = place;
+    if(description) branch.description = description;
 
-    // ----------------------------------------------------------------------
-    // UPDATE SETTINGS ONLY
-    // ----------------------------------------------------------------------
-    const settings = await Settings.findOne({ where: { branch_id: branch.id } });
+    // Update Settings (Embedded)
+    if (!branch.settings) branch.settings = {}; // Should exist, but safety check
 
-    if (!settings) {
-      await transaction.rollback();
-      return sendResponse(res, 404, "Settings not found");
-    }
+    if(settings_logo) branch.settings.logo = settings_logo;
+    if(currency) branch.settings.currency = currency;
+    if(symbol) branch.settings.symbol = symbol;
+    if(symbol_position) branch.settings.symbol_position = symbol_position;
+    if(facebook_url) branch.settings.facebook_url = facebook_url;
+    if(instagram_url) branch.settings.instagram_url = instagram_url;
+    if(google_feedback_url) branch.settings.google_feedback_url = google_feedback_url;
+    if(pdf_menu_url) branch.settings.pdf_menu_url = pdf_menu_url;
 
-    await settings.update(
-      {
-        logo: settings_logo ?? settings.logo,  // <== ONLY LOGO WE UPDATE
-        currency: currency ?? settings.currency,
-        symbol: symbol ?? settings.symbol,
-        symbol_position: symbol_position ?? settings.symbol_position,
-        facebook_url: facebook_url ?? settings.facebook_url,
-        instagram_url: instagram_url ?? settings.instagram_url,
-        google_feedback_url: google_feedback_url ?? settings.google_feedback_url,
-        pdf_menu_url: pdf_menu_url ?? settings.pdf_menu_url
-      },
-      { transaction }
-    );
-
-    await transaction.commit();
+    await branch.save({ session });
+    
+    await session.commitTransaction();
+    session.endSession();
 
     return sendResponse(res, 200, "Updated successfully", {
       branch,
-      settings,
+      settings: branch.settings,
     });
 
   } catch (error) {
-    await transaction.rollback();
+    if (session.inTransaction()) {
+        await session.abortTransaction();
+    }
+    session.endSession();
     console.error("Update error:", error);
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
@@ -380,10 +354,7 @@ const getAnalytics = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    const branch = await Branch.findOne({
-      where: { slug, is_active: true },
-      attributes: ["id"]
-    });
+    const branch = await Branch.findOne({ slug: slug, is_active: true });
 
     if (!branch) {
       return res.status(404).json({
@@ -392,38 +363,48 @@ const getAnalytics = async (req, res) => {
       });
     }
 
-    const branchId = branch.id;
+    const branchId = branch._id;
 
     // 1) categories
-    const totalCategories = await Category.count({
-      where: { branch_id: branchId, is_active: true },
+    const totalCategories = await Category.countDocuments({
+      branch_id: branchId,
+      is_active: true,
     });
 
-    // 2) items (through category)
-    const totalItems = await MenuItem.count({
-      include: [{
-        model: Category,
-        attributes: [],
-        where: { branch_id: branchId }
-      }]
+    // 2) items (through category) if categories are linked
+    // In Mongoose, MenuItem has category_id. We need to find categories for this branch first?
+    // Or if MenuItem has direct branch_id? 
+    // Checking MenuItem model... Only category_id.
+    // So: Find all categories for branch -> Get their IDs -> Count MenuItems with those Category IDs.
+    
+    const branchCategories = await Category.find({ branch_id: branchId }).select('_id');
+    const categoryIds = branchCategories.map(c => c._id);
+    
+    const totalItems = await MenuItem.countDocuments({
+        category_id: { $in: categoryIds }
     });
 
     // 3) monthly visitors
-    const visitors = await MenuAccessLog.findAll({
-      where: { branch_id: branchId },
-      attributes: [
-        [fn("DATE_TRUNC", "month", col("accessed_at")), "month"],
-        [fn("COUNT", "*"), "count"],
-      ],
-      group: [literal(`DATE_TRUNC('month', accessed_at)`)],
-      order: literal(`DATE_TRUNC('month', accessed_at)`),
-    });
+    const visitors = await MenuAccessLog.aggregate([
+        { $match: { branch_id: branchId } },
+        {
+            $group: {
+                _id: {
+                    month: { $month: "$accessed_at" },
+                    year: { $year: "$accessed_at" }
+                },
+                count: { $sum: 1 }
+            }
+        }
+    ]);
 
     let monthlyVisitors = Array(12).fill(0);
+    const currentYear = new Date().getFullYear();
 
     visitors.forEach((row) => {
-      const monthIndex = new Date(row.dataValues.month).getMonth();
-      monthlyVisitors[monthIndex] = Number(row.dataValues.count);
+        if (row._id.year === currentYear) {
+            monthlyVisitors[row._id.month - 1] = row.count; // month 1-12
+        }
     });
 
     return res.status(200).json({
@@ -438,6 +419,39 @@ const getAnalytics = async (req, res) => {
   } catch (e) {
     console.log(e);
     res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+
+const checkRestaurantsImageExistDB = async (fileName, id = null) => {
+  try {
+    if (!fileName) {
+      return { success: false, exists: false };
+    }
+
+    const filter = {
+      "settings.logo": fileName,
+    };
+
+    // If editing — exclude the current branch
+    if (id) {
+      filter._id = { $ne: id };
+    }
+
+    const exists = await Branch.findOne(filter).select('_id').lean(); 
+
+    return {
+      success: true,
+      exists: !!exists,
+    };
+
+  } catch (error) {
+    console.log("Check Image in DB Error:", error);
+    return {
+      success: false,
+      exists: false,
+      error,
+    };
   }
 };
 

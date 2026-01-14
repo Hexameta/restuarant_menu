@@ -1,68 +1,77 @@
-const { DataTypes } = require("sequelize");
-const { DBConn } = require("../config/postgresSequelize.js");
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const Restaurant = DBConn.define("restaurants", {
-  id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-  name: DataTypes.STRING,
-  email: DataTypes.STRING,
-  phone: DataTypes.STRING,
-  logo: DataTypes.STRING,
-  type: DataTypes.STRING,
-  status: {
-    type: DataTypes.ENUM,
-    values: ["active", "inactive"],
-    defaultValue: "inactive",
-  }
-});
+const restaurantSchema = new Schema({
+    name: String,
+    email: String,
+    phone: String,
+    logo: String,
+    type: String,
+    status: {
+        type: String,
+        enum: ['active', 'inactive'],
+        default: 'inactive'
+    }
+}, { timestamps: true });
 
-const Branch = DBConn.define("branches", {
-  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  restaurant_id: DataTypes.INTEGER,
-  name: DataTypes.STRING,
-  description: DataTypes.TEXT,
-  phone: DataTypes.STRING,
-  email: DataTypes.STRING,
-  place: DataTypes.STRING,
-  city: DataTypes.STRING,
-  district: DataTypes.STRING,
-  state: DataTypes.STRING,
-  country: DataTypes.STRING,
-  slug: DataTypes.STRING,
-  status: {
-    type: DataTypes.ENUM,
-    values: ["active", "pending", "inactive", "block"],
-    defaultValue: "pending",
-  },
-  is_active: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true,
-  }
-});
+// Indexes for performance
+restaurantSchema.index({ status: 1 });
 
-const Settings = DBConn.define("settings", {
-  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  branch_id: DataTypes.INTEGER,
-  logo: DataTypes.STRING,
-  currency: DataTypes.STRING,
-  symbol: DataTypes.STRING,
-  pdf_menu_url: DataTypes.STRING,
-  symbol_position: {
-    type: DataTypes.ENUM,
-    values: ["left", "right"],
-  },
-  facebook_url: DataTypes.STRING,
-  instagram_url: DataTypes.STRING,
-  google_feedback_url: DataTypes.STRING,
-});
+const Restaurant = mongoose.model('Restaurant', restaurantSchema);
 
-// 🔗 Associations
-Restaurant.hasMany(Branch, { foreignKey: "restaurant_id", as: "branches" });
-Branch.belongsTo(Restaurant, { foreignKey: "restaurant_id", as: "restaurant" });
+const settingsSchema = new Schema({
+    logo: String,
+    currency: String,
+    symbol: String,
+    pdf_menu_url: String,
+    symbol_position: {
+        type: String,
+        enum: ['left', 'right']
+    },
+    facebook_url: String,
+    instagram_url: String,
+    google_feedback_url: String
+}, { _id: false }); // Embedded in Branch
 
-Branch.hasOne(Settings, { foreignKey: "branch_id", as: "settings" });
-Settings.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+const branchSchema = new Schema({
+    restaurant_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Restaurant'
+    },
+    name: String,
+    description: String,
+    phone: String,
+    email: String,
+    place: String,
+    city: String,
+    district: String,
+    state: String,
+    country: String,
+    slug: {
+        type: String,
+        unique: true
+    },
+    status: {
+        type: String,
+        enum: ['active', 'pending', 'inactive', 'block'],
+        default: 'pending'
+    },
+    is_active: {
+        type: Boolean,
+        default: true
+    },
+    settings: settingsSchema // Embedded settings
+}, { timestamps: true });
 
+// Indexes for performance
+branchSchema.index({ restaurant_id: 1 });
+branchSchema.index({ slug: 1 });
+branchSchema.index({ status: 1 });
+branchSchema.index({ is_active: 1 });
 
+const Branch = mongoose.model('Branch', branchSchema);
+// No separate Settings model needed if embedded, but keeping export structure consistent
+// If Settings logic assumes it has an ID, we might need to adjust or make it a real model. 
+// For NoSQL, embedding 1:1 is usually better. 
 
-module.exports = { Restaurant, Branch, Settings };
-
+module.exports = { Restaurant, Branch };

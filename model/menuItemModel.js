@@ -1,45 +1,33 @@
-const { DataTypes } = require("sequelize");
-const { DBConn } = require("../config/postgresSequelize.js");
-const { Category } = require("./categoryModel.js");
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const MenuItem = DBConn.define(
-  "menu_item",
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
+const optionsSchema = new Schema({
+    option_name: String,
+    option_price: Number,
+    option_offer_price: Number
+}, { _id: true }); // Keep ID for specific option reference if needed
+
+const menuItemSchema = new Schema({
+    category_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category'
     },
-    category_id: DataTypes.INTEGER,
-    name: DataTypes.STRING,
-    description: DataTypes.TEXT,
-    image_url: DataTypes.STRING,
-    // price: DataTypes.DECIMAL,
-    // offer_price: DataTypes.DECIMAL,
-    is_available: DataTypes.BOOLEAN,
-    special_note: DataTypes.TEXT, //give place holder . eg: containe pork .
+    name: String,
+    description: String,
+    image_url: String,
+    is_available: Boolean,
+    special_note: String,
     tag: {
-      type: DataTypes.ENUM,
-      values: ["veg", "non-veg", "cool", "hot"],
+        type: String,
+        enum: ["veg", "non-veg", "cool", "hot"]
     },
-  },
-  {}
-);
+    options: [optionsSchema] // Embedded Options
+}, { timestamps: true });
 
-const Options = DBConn.define(
-  "menu_item_options",
-  {
-    menu_item_id: DataTypes.INTEGER,
-    option_name: DataTypes.STRING,
-    option_price: DataTypes.DECIMAL,
-    option_offer_price: DataTypes.DECIMAL,
-  },
-  {}
-);
+// Indexes for performance
+menuItemSchema.index({ category_id: 1, is_available: 1 });
+menuItemSchema.index({ name: 1 }); // For search
 
-MenuItem.belongsTo(Category, { foreignKey: "category_id" });
-Category.hasMany(MenuItem, { foreignKey: "category_id" });
-Options.belongsTo(MenuItem, { foreignKey: "menu_item_id" });
-MenuItem.hasMany(Options, { foreignKey: "menu_item_id" });
+const MenuItem = mongoose.model('MenuItem', menuItemSchema);
 
-module.exports = { MenuItem, Options };
+module.exports = { MenuItem };

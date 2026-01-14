@@ -1,9 +1,12 @@
+
 var createError = require("http-errors");
 var express = require("express");
 var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 var cors = require("cors");
+const mongoose = require("mongoose");
+const connectDB = require("./config/db.connect");
 
 const { authMiddleware } = require("./middleware/authMiddleware");
 
@@ -16,6 +19,9 @@ var menuItemRouter = require("./routes/menuItemRoute.js");
 var specialTagRouter = require("./routes/specialTagRoutes.js");
 var adsRouter = require("./routes/ads.js");
 var menuRouter = require("./routes/menu.js");
+
+// Connect to MongoDB
+connectDB();
 
 var app = express();
 
@@ -88,6 +94,10 @@ app.use(function (err, req, res, next) {
   res.locals.error = req.app.get("env") === "development" ? err : {};
   res.status(err.status || 500);
   res.render("error");
+});
+
+mongoose.connection.once('open', () => {
+    console.log('Connected to MongoDB');
 });
 
 module.exports = app;

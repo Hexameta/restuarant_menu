@@ -1,8 +1,9 @@
-const { MenuItem, Options } = require("../model/menuItemModel");
+const { MenuItem } = require("../model/menuItemModel");
 const { Category } = require("../model/categoryModel");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
-const { Op } = require("sequelize");
 const { sendResponse } = require("../utils/responseHelper");
+const mongoose = require("mongoose");
+const { Op } = require("sequelize"); // Remove this later if not used, but using Mongoose now so likely safe to remove. I'll remove it in this content.
 
 // =============================
 // CREATE MENU ITEM
@@ -27,16 +28,14 @@ const createMenuItem = async (req, res) => {
     }
 
     // Ensure category exists
-    const category = await Category.findByPk(category_id);
+    const category = await Category.findById(category_id);
     if (!category) {
       return sendResponse(res, 404, "Category not found");
     }
 
      const exists = await MenuItem.findOne({
-      where: {
         category_id,
-        name: { [Op.iLike]: name.trim() }
-      }
+        name: { $regex: new RegExp(`^${name.trim()}$`, "i") }
     });
 
     if (exists) {
@@ -44,7 +43,7 @@ const createMenuItem = async (req, res) => {
     }
 
 
-    const item = await MenuItem.create({
+    const item = new MenuItem({
       category_id,
       name,
       description: description || null,
@@ -54,18 +53,10 @@ const createMenuItem = async (req, res) => {
       is_available: is_available ?? true,
       special_note: special_note || null,
       tag: tag || null,
+      options: options || [] // Embedded options
     });
 
-    const itemId = item.id;
-
-    if (options && options.length > 0) {
-      await Options.bulkCreate(
-        options.map((option) => ({
-          ...option,
-          menu_item_id: itemId,
-        }))
-      );
-    }
+    await item.save();
 
     return sendResponse(res, 201, "Menu item created successfully", item);
 
@@ -82,46 +73,53 @@ const getMenuItems = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
-    const offset = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
     const branch_id = req.user.branchId
     const { category_id } = req.query;
 
-    const whereCondition = {};
-    const categoryCondition = {};
+    const filter = {};
 
     // 🟦 FILTER: CATEGORY
     if (category_id) {
-      whereCondition.category_id = category_id;
+      filter.category_id = category_id;
     }
 
     // 🟥 FILTER: BRANCH
     if (branch_id) {
-      categoryCondition.branch_id = branch_id;
+      // Find all categories for this branch first
+      const branchCategories = await Category.find({ branch_id: branch_id }).select('_id');
+      const categoryIds = branchCategories.map(c => c._id);
+      
+      // If we also had a category_id filter, we need to make sure it belongs to the branch
+      if (category_id) {
+          // Check if the requested category_id is in the branch's categories
+          const isCategoryInBranch = categoryIds.some(id => id.toString() === category_id);
+          if (!isCategoryInBranch) {
+               // Return empty if category doesn't belong to branch
+              return sendResponse(res, 200, "Menu items fetched successfully", [], {
+                  totalCount: 0, currentPage: page, pageSize: limit, totalPages: 0
+              });
+          }
+           // filter already set by category_id above
+      } else {
+           // No specific category requested, so get all items for categories in this branch
+           filter.category_id = { $in: categoryIds };
+      }
     }
 
-    const { rows, count } = await MenuItem.findAndCountAll({
-      where: whereCondition,
-      include: [
-        {
-          model: Category,
-          where: categoryCondition, // applied only if branch_id provided
-        },
-        {
-          model: Options,
-          as: 'menu_item_options',
-        },
-      ],
-      limit,
-      offset,
-      order: [["id", "DESC"]],
-    });
+    const totalCount = await MenuItem.countDocuments(filter);
+    const rows = await MenuItem.find(filter)
+      .populate('category_id') // Populate category info if needed
+      .sort({ _id: -1 })
+      .skip(skip)
+      .limit(limit);
 
     return sendResponse(res, 200, "Menu items fetched successfully", rows, {
-      totalCount: count,
+      totalCount: totalCount,
       currentPage: page,
       pageSize: limit,
-      totalPages: Math.ceil(count / limit),
+      totalPages: Math.ceil(totalCount / limit),
     });
 
   } catch (error) {
@@ -137,16 +135,8 @@ const getItemsByCategory = async (req, res) => {
   try {
     const { category_id } = req.params;
 
-    const items = await MenuItem.findAll({
-      where: { category_id },
-      include: [
-        {
-          model: Options,
-          as: 'menu_item_options',
-        },
-      ],
-      order: [["id", "DESC"]],
-    });
+    const items = await MenuItem.find({ category_id })
+      .sort({ _id: -1 });
 
     return sendResponse(res, 200, "Menu items fetched successfully", items);
 
@@ -162,13 +152,7 @@ const getMenuItemById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const item = await MenuItem.findByPk(id, {
-      include: [
-        {
-          model: Options,
-        },
-      ],
-    });
+    const item = await MenuItem.findById(id);
     if (!item) {
       return sendResponse(res, 404, "Menu item not found");
     }
@@ -186,7 +170,7 @@ const getMenuItemById = async (req, res) => {
 const updateMenuItem = async (req, res) => {
   try {
     const { id } = req.params;
-    const item = await MenuItem.findByPk(id);
+    const item = await MenuItem.findById(id);
 
     if (!item) {
       return sendResponse(res, 404, "Menu item not found");
@@ -197,11 +181,9 @@ const updateMenuItem = async (req, res) => {
     // Duplicate check only if name is provided
     if (name && name.trim()) {
       const exists = await MenuItem.findOne({
-        where: {
-          name: { [Op.iLike]: name.trim() },
+          name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
           category_id: category_id ?? item.category_id,
-          id: { [Op.not]: id }, // exclude itself
-        },
+          _id: { $ne: id }, // exclude itself
       });
 
       if (exists) {
@@ -211,17 +193,15 @@ const updateMenuItem = async (req, res) => {
 
     const { options, ...rest } = req.body;
 
-    await item.update(rest);
+    // Update simple fields
+    Object.assign(item, rest);
 
-    if (options && options.length > 0) {
-      await Options.destroy({ where: { menu_item_id: id } });
-      await Options.bulkCreate(
-        options.map((option) => ({
-          ...option,
-          menu_item_id: id,
-        }))
-      );
+    // Update options if provided
+    if (options && Array.isArray(options)) {
+        item.options = options;
     }
+
+    await item.save();
 
     return sendResponse(res, 200, "Menu item updated successfully", item);
 
@@ -236,7 +216,7 @@ const updateMenuItem = async (req, res) => {
 const deleteMenuItem = async (req, res) => {
   try {
     const { id } = req.params;
-    const item = await MenuItem.findByPk(id);
+    const item = await MenuItem.findById(id);
 
     if (!item) {
       return res.status(404).json({
@@ -245,23 +225,21 @@ const deleteMenuItem = async (req, res) => {
       });
     }
     const fileName = item.image_url;
-        await Options.destroy({
-      where: { menu_item_id: id },
-    });
-   await item.destroy(); 
+    
+    await MenuItem.findByIdAndDelete(id);
 
      sendResponse(res, 200, "Menu item deleted successfully");
 
      if (fileName) {
-  checkMenuItemImageExistsDB(fileName).then((exists) => {
-    if (!exists?.exists) {
-      const { deleteImageDirectly } = require("./ImageController");
-      deleteImageDirectly(fileName).catch((err) =>
-        console.error("Failed to delete image in background:", err)
-      );
+        checkMenuItemImageExistsDB(fileName).then((exists) => {
+            if (!exists?.exists) {
+            const { deleteImageDirectly } = require("./ImageController");
+            deleteImageDirectly(fileName).catch((err) =>
+                console.error("Failed to delete image in background:", err)
+            );
+            }
+        });
     }
-  });
-}
 
   } catch (error) {
     return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
@@ -280,19 +258,17 @@ const searchMenuItem = async (req, res) => {
       return sendResponse(res, 200, "No query provided", []);
     }
 
-    const whereCondition = {
-      name: { [Op.iLike]: `%${q}%` },
+    const filter = {
+      name: { $regex: q, $options: "i" },
     };
 
     if (category_id) {
-      whereCondition.category_id = category_id;
+      filter.category_id = category_id;
     }
 
-    const items = await MenuItem.findAll({
-      where: whereCondition,
-      order: [["name", "ASC"]],
-      limit: 10,
-    });
+    const items = await MenuItem.find(filter)
+      .sort({ name: 1 })
+      .limit(10);
 
     return sendResponse(res, 200, "Menu items fetched successfully", items);
 
@@ -309,18 +285,16 @@ const checkMenuItemImageExistsDB = async (fileName, id = null) => {
       return { success: false, exists: false };
     }
 
-    const whereCondition = {
+    const filter = {
       image_url: fileName,
     };
 
     // If editing — exclude the current category
     if (id) {
-      whereCondition.id = { [Op.ne]: id };  // id != this record
+      filter._id = { $ne: id };
     }
 
-    const exists = await MenuItem.findOne({
-      where: whereCondition,
-    });
+    const exists = await MenuItem.findOne(filter);
 
     return {
       success: true,

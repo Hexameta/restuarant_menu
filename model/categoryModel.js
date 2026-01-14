@@ -1,25 +1,20 @@
-const { DataTypes } = require("sequelize");
-const { DBConn } = require("../config/postgresSequelize.js");
-const { Branch } = require("./resturantModel.js");
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const Category = DBConn.define(
-  "categories",
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
+const categorySchema = new Schema({
+    branch_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Branch'
     },
-    branch_id: DataTypes.INTEGER,
-    name: DataTypes.STRING,
-    image_url: DataTypes.STRING,
-    is_active: DataTypes.BOOLEAN,
-    display_order: DataTypes.INTEGER,
-  },
-  {}
-);
+    name: String,
+    image_url: String,
+    is_active: Boolean,
+    display_order: Number
+}, { timestamps: true });
 
-Category.belongsTo(Branch, { foreignKey: "branch_id" });
-Branch.hasMany(Category, { foreignKey: "branch_id" });
+// Compound index for fetching active categories by branch, ordered by display_order
+categorySchema.index({ branch_id: 1, is_active: 1, display_order: 1 });
+
+const Category = mongoose.model('Category', categorySchema);
 
 module.exports = { Category };
