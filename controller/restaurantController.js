@@ -3,7 +3,10 @@ const { MenuAccessLog } = require("../model/menuAccessLogModel");
 const { MenuItem } = require("../model/menuItemModel");
 const { Restaurant, Branch } = require("../model/resturantModel");
 const { User } = require("../model/userModel");
-const { generateAccessToken, generateRefreshToken } = require("../utils/jwtHelper");
+const {
+  generateAccessToken,
+  generateRefreshToken,
+} = require("../utils/jwtHelper");
 const { sendResponse } = require("../utils/responseHelper");
 const mongoose = require("mongoose");
 
@@ -77,7 +80,7 @@ const createBranch = async (req, res) => {
       facebook_url,
       instagram_url,
       google_feedback_url,
-      pdf_menu_url
+      pdf_menu_url,
     } = req.body;
 
     let finalRestaurantId = restaurant_id;
@@ -86,7 +89,9 @@ const createBranch = async (req, res) => {
     // 1. Handle Restaurant
     if (restaurant_id) {
       // Check if exists
-      const restaurant = await Restaurant.findById(restaurant_id).session(session);
+      const restaurant = await Restaurant.findById(restaurant_id).session(
+        session
+      );
       if (!restaurant) {
         await session.abortTransaction();
         session.endSession();
@@ -142,24 +147,28 @@ const createBranch = async (req, res) => {
       // If code used isActive, let's stick to is_active in Mongoose schema for consistency with SQL column request?
       // Checking resturantModel.js: branchSchema has `is_active`.
       is_active: true,
-      
+
       // Embedded Settings
       settings: {
-        logo: restaurant_logo, 
+        logo: restaurant_logo,
         currency,
         symbol,
         symbol_position,
         facebook_url,
         instagram_url,
         google_feedback_url,
-        pdf_menu_url
-      }
+        pdf_menu_url,
+      },
     });
 
     await newBranch.save({ session });
 
     // Update User
-    await User.findByIdAndUpdate(userId, { branch_id: newBranch._id }, { session });
+    await User.findByIdAndUpdate(
+      userId,
+      { branch_id: newBranch._id },
+      { session }
+    );
 
     const user = await User.findById(userId).session(session);
 
@@ -167,9 +176,9 @@ const createBranch = async (req, res) => {
 
     // Mongoose objects are BSON, need .toObject() or direct access usually works but better to be safe for JWT
     const userPayload = {
-        id: user._id,
-        email: user.email,
-        branch_id: user.branch_id
+      id: user._id,
+      email: user.email,
+      branch_id: user.branch_id,
     };
 
     const accessToken = generateAccessToken(userPayload);
@@ -196,7 +205,7 @@ const createBranch = async (req, res) => {
     });
   } catch (error) {
     if (session.inTransaction()) {
-        await session.abortTransaction();
+      await session.abortTransaction();
     }
     session.endSession();
     console.error("Create branch error:", error);
@@ -209,7 +218,7 @@ const createBranch = async (req, res) => {
 const getResturantById = async (req, res) => {
   try {
     const { branchId } = req.user;
-    
+
     // In Mongoose, settings are embedded in Branch
     const restaurant = await Branch.findById(branchId);
 
@@ -220,7 +229,7 @@ const getResturantById = async (req, res) => {
     // Return structure similar to before: restaurant (branch info) and settings
     // Since settings is inside restaurant (branch), we can extract it or return the whole object
     // Original code returned { restaurant, settings } where restaurant was branch
-    
+
     return sendResponse(res, 200, "Restaurant fetched successfully", {
       restaurant: restaurant,
       settings: restaurant.settings,
@@ -232,7 +241,6 @@ const getResturantById = async (req, res) => {
     });
   }
 };
-
 
 const checkRestaurantsImageExistDB = async (fileName, id = null) => {
   try {
@@ -255,7 +263,6 @@ const checkRestaurantsImageExistDB = async (fileName, id = null) => {
       success: true,
       exists: !!exists,
     };
-
   } catch (error) {
     console.log("Check Image in DB Error:", error);
     return {
@@ -265,7 +272,6 @@ const checkRestaurantsImageExistDB = async (fileName, id = null) => {
     };
   }
 };
-
 
 const updateBranchAndSettings = async (req, res) => {
   const { branchId } = req.user;
@@ -292,8 +298,7 @@ const updateBranchAndSettings = async (req, res) => {
       facebook_url,
       instagram_url,
       google_feedback_url,
-      pdf_menu_url
-
+      pdf_menu_url,
     } = req.body;
 
     const branch = await Branch.findById(branchId).session(session);
@@ -305,30 +310,31 @@ const updateBranchAndSettings = async (req, res) => {
     }
 
     // Update Branch Fields
-    if(branch_name) branch.name = branch_name;
-    if(branch_phone) branch.phone = branch_phone;
-    if(branch_email) branch.email = branch_email;
-    if(country) branch.country = country;
-    if(state) branch.state = state;
-    if(district) branch.district = district;
-    if(city) branch.city = city;
-    if(place) branch.place = place;
-    if(description) branch.description = description;
+    if (branch_name) branch.name = branch_name;
+    if (branch_phone) branch.phone = branch_phone;
+    if (branch_email) branch.email = branch_email;
+    if (country) branch.country = country;
+    if (state) branch.state = state;
+    if (district) branch.district = district;
+    if (city) branch.city = city;
+    if (place) branch.place = place;
+    if (description) branch.description = description;
 
     // Update Settings (Embedded)
     if (!branch.settings) branch.settings = {}; // Should exist, but safety check
 
-    if(settings_logo) branch.settings.logo = settings_logo;
-    if(currency) branch.settings.currency = currency;
-    if(symbol) branch.settings.symbol = symbol;
-    if(symbol_position) branch.settings.symbol_position = symbol_position;
-    if(facebook_url) branch.settings.facebook_url = facebook_url;
-    if(instagram_url) branch.settings.instagram_url = instagram_url;
-    if(google_feedback_url) branch.settings.google_feedback_url = google_feedback_url;
-    if(pdf_menu_url) branch.settings.pdf_menu_url = pdf_menu_url;
+    if (settings_logo) branch.settings.logo = settings_logo;
+    if (currency) branch.settings.currency = currency;
+    if (symbol) branch.settings.symbol = symbol;
+    if (symbol_position) branch.settings.symbol_position = symbol_position;
+    if (facebook_url) branch.settings.facebook_url = facebook_url;
+    if (instagram_url) branch.settings.instagram_url = instagram_url;
+    if (google_feedback_url)
+      branch.settings.google_feedback_url = google_feedback_url;
+    if (pdf_menu_url) branch.settings.pdf_menu_url = pdf_menu_url;
 
     await branch.save({ session });
-    
+
     await session.commitTransaction();
     session.endSession();
 
@@ -336,10 +342,9 @@ const updateBranchAndSettings = async (req, res) => {
       branch,
       settings: branch.settings,
     });
-
   } catch (error) {
     if (session.inTransaction()) {
-        await session.abortTransaction();
+      await session.abortTransaction();
     }
     session.endSession();
     console.error("Update error:", error);
@@ -348,7 +353,6 @@ const updateBranchAndSettings = async (req, res) => {
     });
   }
 };
-
 
 const getAnalytics = async (req, res) => {
   try {
@@ -373,38 +377,40 @@ const getAnalytics = async (req, res) => {
 
     // 2) items (through category) if categories are linked
     // In Mongoose, MenuItem has category_id. We need to find categories for this branch first?
-    // Or if MenuItem has direct branch_id? 
+    // Or if MenuItem has direct branch_id?
     // Checking MenuItem model... Only category_id.
     // So: Find all categories for branch -> Get their IDs -> Count MenuItems with those Category IDs.
-    
-    const branchCategories = await Category.find({ branch_id: branchId }).select('_id');
-    const categoryIds = branchCategories.map(c => c._id);
-    
+
+    const branchCategories = await Category.find({
+      branch_id: branchId,
+    }).select("_id");
+    const categoryIds = branchCategories.map((c) => c._id);
+
     const totalItems = await MenuItem.countDocuments({
-        category_id: { $in: categoryIds }
+      category_id: { $in: categoryIds },
     });
 
     // 3) monthly visitors
     const visitors = await MenuAccessLog.aggregate([
-        { $match: { branch_id: branchId } },
-        {
-            $group: {
-                _id: {
-                    month: { $month: "$accessed_at" },
-                    year: { $year: "$accessed_at" }
-                },
-                count: { $sum: 1 }
-            }
-        }
+      { $match: { branch_id: branchId } },
+      {
+        $group: {
+          _id: {
+            month: { $month: "$accessed_at" },
+            year: { $year: "$accessed_at" },
+          },
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
     let monthlyVisitors = Array(12).fill(0);
     const currentYear = new Date().getFullYear();
 
     visitors.forEach((row) => {
-        if (row._id.year === currentYear) {
-            monthlyVisitors[row._id.month - 1] = row.count; // month 1-12
-        }
+      if (row._id.year === currentYear) {
+        monthlyVisitors[row._id.month - 1] = row.count; // month 1-12
+      }
     });
 
     return res.status(200).json({
@@ -412,49 +418,14 @@ const getAnalytics = async (req, res) => {
       data: {
         totalCategories,
         totalItems,
-        monthlyVisitors
+        monthlyVisitors,
       },
     });
-
   } catch (e) {
     console.log(e);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
-
-const checkRestaurantsImageExistDB = async (fileName, id = null) => {
-  try {
-    if (!fileName) {
-      return { success: false, exists: false };
-    }
-
-    const filter = {
-      "settings.logo": fileName,
-    };
-
-    // If editing — exclude the current branch
-    if (id) {
-      filter._id = { $ne: id };
-    }
-
-    const exists = await Branch.findOne(filter).select('_id').lean(); 
-
-    return {
-      success: true,
-      exists: !!exists,
-    };
-
-  } catch (error) {
-    console.log("Check Image in DB Error:", error);
-    return {
-      success: false,
-      exists: false,
-      error,
-    };
-  }
-};
-
 
 module.exports = {
   searchRestaurants,
@@ -462,5 +433,5 @@ module.exports = {
   getResturantById,
   updateBranchAndSettings,
   checkRestaurantsImageExistDB,
-  getAnalytics
+  getAnalytics,
 };
