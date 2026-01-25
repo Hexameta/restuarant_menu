@@ -3,7 +3,7 @@ const { Category } = require("../model/categoryModel");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
 const { sendResponse } = require("../utils/responseHelper");
 const mongoose = require("mongoose");
-const { Op } = require("sequelize"); // Remove this later if not used, but using Mongoose now so likely safe to remove. I'll remove it in this content.
+
 
 // =============================
 // CREATE MENU ITEM

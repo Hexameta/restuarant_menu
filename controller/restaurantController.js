@@ -52,7 +52,17 @@ const searchRestaurants = async (req, res) => {
  * Creates a branch and optionally a restaurant if it doesn't exist
  */
 const createBranch = async (req, res) => {
-  const { userId } = req.params;
+  let { userId } = req.params;
+  
+  // Fallback to logged-in user if param is invalid/missing
+  if (!userId || userId === "undefined" || userId === "null") {
+      userId = req.user.id;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return sendResponse(res, 400, "Invalid User ID");
+  }
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
