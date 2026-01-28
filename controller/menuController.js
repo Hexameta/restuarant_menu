@@ -101,8 +101,6 @@ const getSpecialMenuItemsByBranchId = async (req, res) => {
             .populate({
                 path: 'menu_items',
                 model: 'MenuItem', 
-                match: { is_available: true }, // Only populated available items
-                select: 'name image_url price offer_price description options tag' // Select necessary fields
             })
             .lean();
 
