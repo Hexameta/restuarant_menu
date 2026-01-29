@@ -1,20 +1,13 @@
-const { DataTypes } = require("sequelize");
-const { DBConn } = require("../config/postgresSequelize.js");
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const OTPValidate = DBConn.define(
-  "otp_validate",
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    otp: DataTypes.INTEGER,
-    email: DataTypes.STRING,
-    is_validate: DataTypes.BOOLEAN,
-    expiration_time: DataTypes.DATE,
-  },
-  {}
-);
+const otpValidateSchema = new Schema({
+    otp: Number,
+    email: String,
+    is_validate: Boolean,
+    expiration_time: Date
+}, { timestamps: true });
+
+const OTPValidate = mongoose.model('OTPValidate', otpValidateSchema);
 
 module.exports = { OTPValidate };

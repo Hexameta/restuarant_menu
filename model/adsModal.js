@@ -1,33 +1,29 @@
-const { DataTypes } = require("sequelize");
-const { DBConn } = require("../config/postgresSequelize");
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const Ads = DBConn.define(
-  "ads",
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
+const adsSchema = new Schema({
+    branch_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Branch'
     },
-    branch_id: DataTypes.INTEGER,
-    title: DataTypes.STRING,
+    title: String,
     ad_type: {
-      type: DataTypes.ENUM,
-      values: ["carousel", "banner"],
+        type: String,
+        enum: ["carousel", "banner"]
     },
     is_expired: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
+        type: Boolean,
+        default: false
     },
-    valid_from: DataTypes.DATE,
-    valid_to: DataTypes.DATE,
-    image_url: DataTypes.STRING,
+    valid_from: Date,
+    valid_to: Date,
+    image_url: String,
     is_admin: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
+        type: Boolean,
+        default: false
     }
-  },
-  {}
-);
+}, { timestamps: true });
+
+const Ads = mongoose.model('Ads', adsSchema);
 
 module.exports = { Ads };

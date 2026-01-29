@@ -1,24 +1,26 @@
-const { DataTypes } = require("sequelize");
-const { DBConn } = require("../config/postgresSequelize.js");
-const { Branch } = require("./resturantModel.js");
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const User = DBConn.define(
-  "users",
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
+const userSchema = new Schema({
+    branch_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Branch'
     },
-    branch_id: DataTypes.INTEGER,
-    username: DataTypes.STRING,
-    email: DataTypes.STRING,
-    Password: DataTypes.STRING,
-  },
-  {}
-);
+    username: {
+        type: String,
+        required: true
+    },
+    email: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    Password: {
+        type: String,
+        required: true
+    }
+}, { timestamps: true });
 
-User.belongsTo(Branch, { foreignKey: "branch_id" });
-Branch.hasMany(User, { foreignKey: "branch_id" });
+const User = mongoose.model('User', userSchema);
 
 module.exports = { User };

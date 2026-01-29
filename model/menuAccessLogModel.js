@@ -1,29 +1,19 @@
-const { DataTypes } = require("sequelize");
-const { DBConn } = require("../config/postgresSequelize.js");
-const { Branch } = require("./resturantModel.js");
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const MenuAccessLog = DBConn.define("menu_access_logs", {
-  id: { 
-    type: DataTypes.INTEGER, 
-    autoIncrement: true, 
-    primaryKey: true 
-  },
-  branch_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: 'branches',
-      key: 'id'
+const menuAccessLogSchema = new Schema({
+    branch_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Branch',
+        required: true
+    },
+    accessed_at: {
+        type: Date,
+        default: Date.now,
+        required: true
     }
-  },
-  accessed_at: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW,
-    allowNull: false
-  }
-});
+}, { timestamps: true });
 
-// 🔗 Association
-MenuAccessLog.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+const MenuAccessLog = mongoose.model('MenuAccessLog', menuAccessLogSchema);
 
 module.exports = { MenuAccessLog };

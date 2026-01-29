@@ -21,8 +21,9 @@ const checkUser = async (req, res) => {
       return sendResponse(res, 400, "Email is required");
     }
 
+
     // Check if user exists
-    const user = await User.findOne({ where: { email: email } });
+    const user = await User.findOne({ email: email });
 
     if (user) {
       return sendResponse(res, 400, "Mail id already exist! Try to Sign in");
@@ -44,8 +45,9 @@ const checkUser = async (req, res) => {
     const emailSent = await sendOTPEmail(email, otp);
 
     if (emailSent) {
+      // Mongoose uses _id, not id by default, but virtual 'id' might exist. Safer to use _id
       return sendResponse(res, 200, "OTP sent to email", {
-        otpId: otpRecord.id,
+        otpId: otpRecord._id, 
         email: email,
       });
     } else {
@@ -67,7 +69,7 @@ const signin = async (req, res) => {
       return sendResponse(res, 400, "Email and password are required");
     }
 
-    const user = await User.findOne({ where: { email: email } });
+    const user = await User.findOne({ email: email });
 
     if (!user) {
       return sendResponse(res, 404, "User not found");
@@ -84,13 +86,13 @@ const signin = async (req, res) => {
 
     if (user.branch_id !== null) {
       tokenPayload = {
-        id: user.id,
+        id: user._id, // Use _id
         email: user.email,
         branch_id: user.branch_id,
       };
     } else {
       tokenPayload = {
-        id: user.id,
+        id: user._id, // Use _id
         email: user.email,
         branch_id: user.branch_id,
         newUser: true,
@@ -109,7 +111,6 @@ const signin = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      secure: false,
     });
 
     res.cookie("refreshToken", refreshToken, {
@@ -123,11 +124,11 @@ const signin = async (req, res) => {
         branch_id: user.branch_id,
         email: user.email,
         username: user.username,
-        id: user.id,
+        id: user._id, // Use _id
       },
       redirect: user.branch_id ? "/dashboard" : "/registration",
       success: true,
-      token: accessToken, // Optional: return token in body too if needed by frontend
+      token: accessToken, 
     });
   } catch (error) {
     console.error("Error in signin:", error);
@@ -150,7 +151,7 @@ const verifyOTPAndRegister = async (req, res) => {
     }
 
     // Find OTP record
-    const otpRecord = await OTPValidate.findByPk(otpId);
+    const otpRecord = await OTPValidate.findById(otpId);
 
     if (!otpRecord) {
       return sendResponse(res, 404, "OTP record not found");
@@ -178,13 +179,14 @@ const verifyOTPAndRegister = async (req, res) => {
 
     const user = await User.create({
       email: email,
-      Password: hashedPassword, // Note: Model uses 'Password' with capital P based on file view
-      username: email.split("@")[0], // Default username
-      branch_id: null, // Default null as per flow
+      Password: hashedPassword, 
+      username: email.split("@")[0], 
+      branch_id: null, 
     });
 
     // Mark OTP as validated
-    await otpRecord.update({ is_validate: true });
+    otpRecord.is_validate = true;
+    await otpRecord.save();
 
     let tokenPayload = {};
     console.log(user.branch_id);

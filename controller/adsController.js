@@ -1,7 +1,6 @@
 const { Ads } = require("../model/adsModal");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
-const { Op } = require("sequelize");
-const jwt = require('jsonwebtoken');
+const { sendResponse } = require("../utils/responseHelper");
 
 /**
  * CREATE AD
@@ -26,7 +25,7 @@ const createAd = async (req, res) => {
       });
     }
 
-    const ad = await Ads.create({
+    const ad = new Ads({
       branch_id,
       title,
       ad_type,
@@ -35,6 +34,8 @@ const createAd = async (req, res) => {
       image_url,
       is_admin: is_admin || false,
     });
+    
+    await ad.save();
 
     return res.status(201).json({
       success: true,
@@ -54,17 +55,17 @@ const getAds = async (req, res) => {
   try {
     const branch_id = req.user.branchId; 
     
-
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
-    const offset = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
-    const { count, rows } = await Ads.findAndCountAll({
-      where: { branch_id,is_admin:false,is_expired:false },
-      limit,
-      offset,
-      order: [["id", "DESC"]],
-    });
+    const filter = { branch_id, is_admin: false, is_expired: false };
+
+    const count = await Ads.countDocuments(filter);
+    const rows = await Ads.find(filter)
+      .sort({ _id: -1 })
+      .skip(skip)
+      .limit(limit);
 
     return res.status(200).json({
       success: true,
@@ -85,20 +86,14 @@ const getAds = async (req, res) => {
  */
 const getActiveAds = async (req, res) => {
   try {
-    // const { branch_id } = req.params;
-
     const branch_id = req.user.branchId; 
-
     const now = new Date();
 
-    const ads = await Ads.findAll({
-      where: {
-        branch_id,
-        valid_from: { [Op.lte]: now },
-        valid_to: { [Op.gte]: now },
-      },
-      order: [["id", "DESC"]],
-    });
+    const ads = await Ads.find({
+      branch_id,
+      valid_from: { $lte: now },
+      valid_to: { $gte: now },
+    }).sort({ _id: -1 });
 
     return res.status(200).json({ success: true, data: ads });
   } catch (error) {
@@ -113,9 +108,8 @@ const updateAd = async (req, res) => {
   try {
     const {branchId} = req.user
     const { id } = req.params;
-    const ad = await Ads.findByPk(id);
+    const ad = await Ads.findById(id);
 
-    req.body.branch_id = branchId
     if (!ad) {
       return res.status(404).json({
         success: false,
@@ -123,7 +117,13 @@ const updateAd = async (req, res) => {
       });
     }
 
-    await ad.update(req.body);
+    // Force strict branch check if needed, but current logic mimics previous behavior
+    // which just set req.body.branch_id. 
+    // Mongoose update:
+    req.body.branch_id = branchId;
+    
+    Object.assign(ad, req.body);
+    await ad.save();
 
     return res.status(200).json({
       success: true,
@@ -141,7 +141,7 @@ const updateAd = async (req, res) => {
 const deleteAd = async (req, res) => {
   try {
     const { id } = req.params;
-    const ad = await Ads.findByPk(id);
+    const ad = await Ads.findByIdAndDelete(id);
 
     if (!ad) {
       return res.status(404).json({
@@ -149,8 +149,6 @@ const deleteAd = async (req, res) => {
         message: "Ad not found",
       });
     }
-
-    await ad.destroy();
 
     return res.status(200).json({
       success: true,
@@ -168,18 +166,16 @@ const checkAdsImageExistsDB = async (fileName, id = null) => {
       return { success: false, exists: false };
     }
 
-    const whereCondition = {
-      imageUrl: fileName,
+    const filter = {
+      image_url: fileName,
     };
 
     // If editing — exclude the current category
     if (id) {
-      whereCondition.id = { [Op.ne]: id };  // id != this record
+      filter._id = { $ne: id };
     }
 
-    const exists = await ad.findOne({
-      where: whereCondition,
-    });
+    const exists = await Ads.findOne(filter);
 
     return {
       success: true,
