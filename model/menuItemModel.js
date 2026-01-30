@@ -17,10 +17,12 @@ const menuItemSchema = new Schema({
     image_url: String,
     is_available: Boolean,
     special_note: String,
+
     tag: {
         type: String,
         enum: ["veg", "non-veg", "cool", "hot"]
     },
+    no_price: String,
     options: [optionsSchema] // Embedded Options
 }, { timestamps: true });
 

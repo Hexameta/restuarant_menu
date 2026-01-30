@@ -18,6 +18,7 @@ const createMenuItem = async (req, res) => {
       options,
       // price,
       // offer_price,
+      no_price,
       is_available,
       special_note,
       tag,
@@ -50,6 +51,7 @@ const createMenuItem = async (req, res) => {
       image_url: image_url || null,
       // price: price || null,
       // offer_price: offer_price || null,
+      no_price: no_price,
       is_available: is_available ?? true,
       special_note: special_note || null,
       tag: tag || null,
@@ -311,6 +313,23 @@ const checkMenuItemImageExistsDB = async (fileName, id = null) => {
   }
 };
 
+const updateMenuItemStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_available } = req.body;
+
+    const item = await MenuItem.findByIdAndUpdate(id, { is_available }, { new: true });
+    if (!item) {
+      return sendResponse(res, 404, "Menu item not found");
+    }
+
+    return sendResponse(res, 200, "Menu item status updated successfully", item);
+
+  } catch (error) {
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
+  }
+};
+
 
 module.exports = {
   createMenuItem,
@@ -320,5 +339,6 @@ module.exports = {
   updateMenuItem,
   deleteMenuItem,
   searchMenuItem,
-  checkMenuItemImageExistsDB
+  checkMenuItemImageExistsDB,
+  updateMenuItemStatus
 };

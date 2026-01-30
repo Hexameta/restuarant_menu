@@ -57,10 +57,10 @@ const getCategories = async (req, res) => {
   try {
     const branch_id = req.user.branchId;
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
 
-    const filter = { branch_id, is_active: true };
+    const filter = { branch_id };
 
     const totalCount = await Category.countDocuments(filter);
     const rows = await Category.find(filter)
@@ -260,6 +260,26 @@ const reOrderCategory = async (req, res) => {
   }
 }
 
+const updateStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+
+    const category = await Category.findById(id);
+    if (!category) {
+      return sendResponse(res, 404, "Category not found");
+    }
+
+    category.is_active = is_active;
+    await category.save();
+
+    return sendResponse(res, 200, "Category status updated successfully");
+  } catch (error) {
+    console.log("Update Status Error:", error);
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
+  }
+}
+
 module.exports = {
   createCategory,
   getCategories,
@@ -268,5 +288,6 @@ module.exports = {
   deleteCategory,
   searchCategory,
   checkCategoryImageExistsDB,
-  reOrderCategory
+  reOrderCategory,
+  updateStatus
 };

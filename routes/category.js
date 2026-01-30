@@ -7,7 +7,8 @@ const {
   updateCategory,
   deleteCategory,
   searchCategory,
-  reOrderCategory
+  reOrderCategory,
+  updateStatus
 } = require("../controller/categoryController");
 
 router.post("/", createCategory);
@@ -16,7 +17,7 @@ router.get("/", getCategories);
 router.get("/single/:id", getCategoryById);
 router.put("/:id", updateCategory);
 router.delete("/:id", deleteCategory);
-
+router.put("/status/:id", updateStatus);
 
 router.post("/reorder", reOrderCategory);
 
