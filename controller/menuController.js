@@ -75,6 +75,7 @@ const getMenuItemsByBranchIdForMenu = async (req, res) => {
         const menuItems = await MenuItem.find({
             category_id: { $in: categoryIds }
         })
+        .sort({ is_available: -1 }) 
         .populate({ path: 'category_id', select: 'name' })
         .lean();
 
