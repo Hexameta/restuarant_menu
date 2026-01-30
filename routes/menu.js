@@ -8,7 +8,7 @@ router.get("/category/:branchId", getCategoriesbyIdForMenu);
 router.get("/menu/:branchId", getMenuItemsByBranchIdForMenu);
 router.get("/special-item/:branchId", getSpecialMenuItemsByBranchId);
 router.get("/carasoul/:branchId", getCarasoulByBranchId);
-router.post("/access-log/:slug", logMenuAccess);
+router.get("/access-log/:slug", logMenuAccess);
 
 
 module.exports = router;
