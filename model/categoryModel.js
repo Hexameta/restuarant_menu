@@ -9,7 +9,11 @@ const categorySchema = new Schema({
     name: String,
     image_url: String,
     is_active: Boolean,
-    display_order: Number
+    display_order: Number,
+    is_deleted: {
+        type: Boolean,
+        default: false
+    }
 }, { timestamps: true });
 
 // Compound index for fetching active categories by branch, ordered by display_order

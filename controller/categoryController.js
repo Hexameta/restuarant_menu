@@ -60,7 +60,7 @@ const getCategories = async (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
 
-    const filter = { branch_id };
+    const filter = { branch_id, is_deleted: false };
 
     const totalCount = await Category.countDocuments(filter);
     const rows = await Category.find(filter)
@@ -155,9 +155,20 @@ const deleteCategory = async (req, res) => {
       return sendResponse(res, 404, "Category not found");
     }
 
-    category.is_active = false;
-    await category.save();
-
+    let nameMatch = false;
+    nameMatch = await Category.exists({ 
+      name: category.name, 
+      _id: { $ne: id }, 
+      is_deleted: false 
+    });
+    if(!nameMatch){
+      category.is_deleted = true;
+      await category.save();
+    }
+    else{
+      await MenuItem.deleteMany({ category_id: id });
+      await Category.findByIdAndDelete(id);
+    }
     return sendResponse(res, 200, "Category deleted successfully");
   } catch (error) {
     console.log("Delete Category Error:", error);

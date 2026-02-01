@@ -68,7 +68,7 @@ const getMenuItemsByBranchIdForMenu = async (req, res) => {
         }
 
         // Get all categories for this branch
-        const branchCategories = await Category.find({ branch_id: branchId }).select('_id').lean();
+        const branchCategories = await Category.find({ branch_id: branchId,is_deleted: false }).select('_id').lean();
         const categoryIds = branchCategories.map(c => c._id);
 
         // Get Menu Items
