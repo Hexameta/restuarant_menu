@@ -330,6 +330,67 @@ const updateMenuItemStatus = async (req, res) => {
   }
 };
 
+// =============================
+// GET INACTIVE MENU ITEMS (WITH PAGINATION & CATEGORY FILTER)
+// =============================
+const getInactiveMenuItems = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const branch_id = req.user.branchId;
+    const { category_id } = req.query;
+
+    const filter = { is_available: false }; // Only inactive items
+
+    // 🟦 FILTER: CATEGORY
+    if (category_id) {
+      filter.category_id = category_id;
+    }
+
+    // 🟥 FILTER: BRANCH
+    if (branch_id) {
+      // Find all categories for this branch first
+      const branchCategories = await Category.find({ branch_id: branch_id }).select('_id');
+      const categoryIds = branchCategories.map(c => c._id);
+      
+      // If we also had a category_id filter, we need to make sure it belongs to the branch
+      if (category_id) {
+          // Check if the requested category_id is in the branch's categories
+          const isCategoryInBranch = categoryIds.some(id => id.toString() === category_id);
+          if (!isCategoryInBranch) {
+               // Return empty if category doesn't belong to branch
+              return sendResponse(res, 200, "Inactive menu items fetched successfully", [], {
+                  totalCount: 0, currentPage: page, pageSize: limit, totalPages: 0
+              });
+          }
+           // filter already set by category_id above
+      } else {
+           // No specific category requested, so get all items for categories in this branch
+           filter.category_id = { $in: categoryIds };
+      }
+    }
+
+    const totalCount = await MenuItem.countDocuments(filter);
+    const rows = await MenuItem.find(filter)
+      .populate('category_id') // Populate category info if needed
+      .sort({ _id: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    return sendResponse(res, 200, "Inactive menu items fetched successfully", rows, {
+      totalCount: totalCount,
+      currentPage: page,
+      pageSize: limit,
+      totalPages: Math.ceil(totalCount / limit),
+    });
+
+  } catch (error) {
+    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
+  }
+};
+
 
 module.exports = {
   createMenuItem,
@@ -340,5 +401,6 @@ module.exports = {
   deleteMenuItem,
   searchMenuItem,
   checkMenuItemImageExistsDB,
-  updateMenuItemStatus
+  updateMenuItemStatus,
+  getInactiveMenuItems
 };
