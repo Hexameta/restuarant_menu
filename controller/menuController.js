@@ -46,7 +46,8 @@ const getCategoriesbyIdForMenu = async (req, res) => {
 
         const category = await Category.find({
             branch_id: branchId,
-            is_active: true
+            is_active: true,
+            is_deleted: false
         })
         .sort({ display_order: 1 })
         .lean();
@@ -133,6 +134,8 @@ const getCarasoulByBranchId = async (req, res) => {
             valid_from: { $lte: now },
             valid_to: { $gte: now }
         }).lean();
+
+        console.log("Carousel items fetched successfully", carasoulMenuItems);
 
         return sendResponse(res, 200, "Carousel items fetched successfully", carasoulMenuItems);
     } catch (error) {
