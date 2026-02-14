@@ -17,6 +17,9 @@ var menuItemRouter = require("./routes/menuItemRoute.js");
 var specialTagRouter = require("./routes/specialTagRoutes.js");
 var adsRouter = require("./routes/ads.js");
 var menuRouter = require("./routes/menu.js");
+var tableRouter = require("./routes/tableRoutes.js");
+var orderRouter = require("./routes/orderRoutes.js");
+var branchUserRouter = require("./routes/branchUserRoutes.js");
 
 // Connect to MongoDB
 connectDB();
@@ -78,6 +81,9 @@ app.use("/api/v1/menu-item", menuItemRouter);
 app.use("/api/v1/special-tag", specialTagRouter);
 app.use("/api/v1/ads", adsRouter);
 app.use("/api/v1/menu", menuRouter);
+app.use("/api/v1/tables", tableRouter);
+app.use("/api/v1/orders", orderRouter);
+app.use("/api/v1/branch-users", branchUserRouter);
 
 /* -------------------- 404 -------------------- */
 app.use(function (req, res, next) {

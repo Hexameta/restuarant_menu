@@ -18,6 +18,11 @@ const userSchema = new Schema({
     Password: {
         type: String,
         required: true
+    },
+    role: {
+        type: String,
+        enum: ['waiter', 'admin', 'manager', 'kitchen', 'superadmin'],
+        default: 'admin'
     }
 }, { timestamps: true });
 
