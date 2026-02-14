@@ -10,6 +10,16 @@ const createOrder = async (req, res) => {
             return sendResponse(res, 400, "Table ID and items are required");
         }
 
+        // Check for existing open/confirmed orders for the same table
+        const existingOrder = await Order.findOne({
+            table_id,
+            status: { $in: ['open', 'confirmed'] }
+        });
+
+        if (existingOrder) {
+            return sendResponse(res, 400, "There is already an active order for this table. Please complete or cancel it first.");
+        }
+
         const order = new Order({
             customer_name,
             customer_phone,

@@ -11,6 +11,14 @@ const orderItemSchema = new Schema({
         type: Number,
         required: true,
         min: 1
+    },
+    option_name: {
+        type: String,
+        default: ''
+    },
+    price: {
+        type: Number,
+        default: 0
     }
 }, { _id: false });
 
