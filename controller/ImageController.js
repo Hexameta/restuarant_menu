@@ -76,7 +76,7 @@ const uploadImage = async (req, res) => {
     }
 
     // safer filename
-    const fileName = `uploads/${Date.now()}-${file.originalname}`.replace(
+    const fileName = `${Date.now()}-${file.originalname}`.replace(
       /\.(jpg|jpeg|png|gif|webp)/gi,
       ".webp",
     );
