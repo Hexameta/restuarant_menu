@@ -1,18 +1,14 @@
 const multer = require("multer");
 const sharp = require("sharp");
-const { createClient } = require("@supabase/supabase-js");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
-const {checkCategoryImageExistsDB} = require("../controller/categoryController");
+const {
+  checkCategoryImageExistsDB,
+} = require("../controller/categoryController");
 const { checkMenuItemImageExistsDB } = require("./menuItemController");
 const { checkAdsImageExistsDB } = require("./adsController");
 const { checkRestaurantsImageExistDB } = require("./restaurantController");
-// =============================
-// SUPABASE CLIENT
-// =============================
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-);
+const { PutObjectCommand } = require("@aws-sdk/client-s3");
+const r2 = require("../config/r2Client");
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -49,7 +45,7 @@ const compressUntilTarget = async (buffer) => {
 };
 
 // =============================
-// UPLOAD IMAGE TO SUPABASE
+// UPLOAD IMAGE TO Cloud flare
 // =============================
 const uploadImage = async (req, res) => {
   try {
@@ -63,11 +59,8 @@ const uploadImage = async (req, res) => {
     }
 
     // Convert to webp buffer
-    let buffer = await sharp(file.buffer)
-      .webp({ quality: 85 })
-      .toBuffer();
+    let buffer = await sharp(file.buffer).webp({ quality: 85 }).toBuffer();
 
-    // If still above 2MB → further compress
     if (buffer.length > 2 * 1024 * 1024) {
       buffer = await sharp(file.buffer)
         .resize({ width: 1800 })
@@ -75,7 +68,6 @@ const uploadImage = async (req, res) => {
         .toBuffer();
     }
 
-    // Final safety
     if (buffer.length > 2 * 1024 * 1024) {
       buffer = await sharp(file.buffer)
         .resize({ width: 1400 })
@@ -83,44 +75,41 @@ const uploadImage = async (req, res) => {
         .toBuffer();
     }
 
-    // Generate unique filename — MAKE IT WEBP
-    const timestamp = Date.now();
-    const fileName = `${timestamp}-${file.originalname}`
-      .replace(/\.jpg|\.jpeg|\.png|\.gif|\.webp/gi, ".webp");
+    // safer filename
+    const fileName = `${Date.now()}-${file.originalname}`.replace(
+      /\.(jpg|jpeg|png|gif|webp)/gi,
+      ".webp",
+    );
 
-    const { error } = await supabase.storage
-      .from(process.env.SUPABASE_BUCKET)
-      .upload(fileName, buffer, {
-        upsert: true,
-        contentType: "image/webp",
-      });
+    // Upload to R2
+    await r2.send(
+      new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET,
+        Key: fileName,
+        Body: buffer,
+        ContentType: "image/webp",
+      }),
+    );
 
-    if (error) {
-      return res.status(500).json({
-        success: false,
-        message: "Supabase upload failed",
-        error,
-      });
-    }
-
-    const { data: publicData } = supabase.storage
-      .from(process.env.SUPABASE_BUCKET)
-      .getPublicUrl(fileName);
+    // Public URL
+    const imageUrl = `${process.env.R2_PUBLIC_URL}/${fileName}`;
 
     return res.status(201).json({
       success: true,
       message: "Image uploaded successfully",
-      url: publicData.publicUrl,
+      url: imageUrl,
       sizeKB: Math.round(buffer.length / 1024),
       fileName,
     });
-
   } catch (error) {
     console.log("Upload Image Error:", error);
-    return res.status(500).json(errorHandler(error));
+    return res.status(500).json({
+      success: false,
+      message: "Image upload failed",
+      error: error.message,
+    });
   }
 };
-
 
 const deleteImage = async (req, res) => {
   try {
@@ -132,26 +121,26 @@ const deleteImage = async (req, res) => {
         message: "fileName is required",
       });
     }
-    if(tableName){
-     let response = null
-      if(tableName == "category"){
-      response = await checkCategoryImageExistsDB(fileName,id)
+    if (tableName) {
+      let response = null;
+      if (tableName == "category") {
+        response = await checkCategoryImageExistsDB(fileName, id);
       }
-      if(tableName == "menu_item"){
-      response = await checkMenuItemImageExistsDB(fileName,id)
+      if (tableName == "menu_item") {
+        response = await checkMenuItemImageExistsDB(fileName, id);
       }
-      if(tableName == "ads"){
-        response = await checkAdsImageExistsDB(fileName,id)
+      if (tableName == "ads") {
+        response = await checkAdsImageExistsDB(fileName, id);
       }
-      if(tableName == "restaurants"){
-        response = await checkRestaurantsImageExistDB(fileName,id)
+      if (tableName == "restaurants") {
+        response = await checkRestaurantsImageExistDB(fileName, id);
       }
-     if(response?.exists){
-       return res.status(200).json({
-      success: true,
-      message: "It's a Shared Image, removed successfully",
-    });
-     }
+      if (response?.exists) {
+        return res.status(200).json({
+          success: true,
+          message: "It's a Shared Image, removed successfully",
+        });
+      }
     }
     const { error } = await supabase.storage
       .from(process.env.SUPABASE_BUCKET)
@@ -270,16 +259,14 @@ const deletePdf = async (req, res) => {
   }
 };
 
-
 async function deleteImageDirectly(fileName) {
   if (!fileName) return;
   supabase.storage
     .from(process.env.SUPABASE_BUCKET)
     .remove([fileName])
     .then(() => console.log("✔ Image deleted in background:", fileName))
-    .catch(err => console.log("❗ Async delete failed:", err.message));
+    .catch((err) => console.log("❗ Async delete failed:", err.message));
 }
-
 
 module.exports = {
   upload,
@@ -287,5 +274,5 @@ module.exports = {
   deleteImage,
   deleteImageDirectly,
   uploadPdf,
-  deletePdf
+  deletePdf,
 };
