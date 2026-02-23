@@ -1,14 +1,15 @@
-
 var createError = require("http-errors");
 var express = require("express");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 var cors = require("cors");
 const mongoose = require("mongoose");
-const connectDB = require("./config/db.connect");
+const serverless = require("serverless-http");
 
+const connectDB = require("./config/db.connect");
 const { authMiddleware } = require("./middleware/authMiddleware");
 
+/* -------------------- ROUTES -------------------- */
 var usersRouter = require("./routes/users.js");
 var restaurantRouter = require("./routes/restaurantRoute");
 var categoryRouter = require("./routes/category.js");
@@ -18,10 +19,11 @@ var specialTagRouter = require("./routes/specialTagRoutes.js");
 var adsRouter = require("./routes/ads.js");
 var menuRouter = require("./routes/menu.js");
 
-// Connect to MongoDB
-connectDB();
-
+/* -------------------- CREATE APP -------------------- */
 var app = express();
+
+/* -------------------- CONNECT DB (Lambda Safe) -------------------- */
+connectDB();
 
 /* -------------------- BASIC MIDDLEWARE -------------------- */
 app.use(logger("dev"));
@@ -29,7 +31,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-/* -------------------- CORS (FINAL) -------------------- */
+/* -------------------- CORS -------------------- */
 const allowedOrigins = [
   "https://admin.digifymenu.com",
   "https://menu.digifymenu.com",
@@ -60,10 +62,7 @@ const corsMiddleware = cors({
   ],
 });
 
-/* 🔥 CORS MUST COME BEFORE AUTH */
 app.use(corsMiddleware);
-
-/* 🔥 EXPLICIT OPTIONS HANDLER (MANDATORY) */
 app.options("*", corsMiddleware);
 
 /* -------------------- AUTH -------------------- */
@@ -90,12 +89,26 @@ app.use(function (err, req, res, next) {
   res.status(statusCode).json({
     success: false,
     message: err.message,
-    error: req.app.get("env") === "development" ? err : {},
+    error: process.env.NODE_ENV === "development" ? err : {},
   });
 });
 
-mongoose.connection.once('open', () => {
-    console.log('Connected to MongoDB');
+/* -------------------- MONGO LOG -------------------- */
+mongoose.connection.once("open", () => {
+  console.log("Connected to MongoDB");
 });
 
-module.exports = app;
+/* -------------------- EXPORT FOR LAMBDA -------------------- */
+module.exports.handler = serverless(app);
+
+
+/* -------------------- EXPORT FOR LAMBDA -------------------- */
+module.exports.handler = serverless(app);
+
+/* -------------------- LOCAL SERVER (ONLY FOR DEV) -------------------- */
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 5001;
+  app.listen(PORT, () => {
+    console.log(`Server running locally on port ${PORT}`);
+  });
+}
