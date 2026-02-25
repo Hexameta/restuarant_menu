@@ -98,9 +98,6 @@ mongoose.connection.once("open", () => {
   console.log("Connected to MongoDB");
 });
 
-/* -------------------- EXPORT FOR LAMBDA -------------------- */
-module.exports.handler = serverless(app);
-
 
 /* -------------------- EXPORT FOR LAMBDA -------------------- */
 module.exports.handler = serverless(app);
