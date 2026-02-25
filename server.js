@@ -22,8 +22,7 @@ var menuRouter = require("./routes/menu.js");
 /* -------------------- CREATE APP -------------------- */
 var app = express();
 
-/* -------------------- CONNECT DB (Lambda Safe) -------------------- */
-connectDB();
+
 
 /* -------------------- BASIC MIDDLEWARE -------------------- */
 app.use(logger("dev"));
@@ -100,12 +99,20 @@ mongoose.connection.once("open", () => {
 
 
 /* -------------------- EXPORT FOR LAMBDA -------------------- */
-module.exports.handler = serverless(app);
+const handler = serverless(app);
+
+module.exports.handler = async (event, context) => {
+  await connectDB();   // 👈 Lambda will WAIT here
+  return handler(event, context);
+};
 
 /* -------------------- LOCAL SERVER (ONLY FOR DEV) -------------------- */
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 5001;
-  app.listen(PORT, () => {
-    console.log(`Server running locally on port ${PORT}`);
+
+  connectDB().then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running locally on port ${PORT}`);
+    });
   });
 }
