@@ -1,0 +1,36 @@
+name: Deploy Lambda
+
+on:
+  push:
+    branches:
+      - feat/lamda
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --production
+
+      - name: Create ZIP
+        run: |
+          zip -r function.zip . \
+          -x "*.git*" \
+          -x "node_modules/.cache/*"
+
+      - name: Deploy to Lambda
+        uses: appleboy/lambda-action@v0.1.5
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: us-east-1
+          function_name: digifymenu-apis
+          zip_file: function.zip
