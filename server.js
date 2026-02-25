@@ -64,10 +64,15 @@ const corsMiddleware = cors({
 app.use(corsMiddleware);
 app.options("*", corsMiddleware);
 
+app.use("/api/v1/health", (req, res) => {
+  res.status(200).json({ message: "Health check successful" });
+});
+
 /* -------------------- AUTH -------------------- */
 app.use(authMiddleware);
 
 /* -------------------- ROUTES -------------------- */
+
 app.use("/api/v1/users", usersRouter);
 app.use("/api/v1/restaurant", restaurantRouter);
 app.use("/api/v1/category", categoryRouter);
