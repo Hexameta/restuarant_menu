@@ -22,8 +22,6 @@ var menuRouter = require("./routes/menu.js");
 /* -------------------- CREATE APP -------------------- */
 var app = express();
 
-
-
 /* -------------------- BASIC MIDDLEWARE -------------------- */
 app.use(logger("dev"));
 app.use(express.json());
@@ -37,7 +35,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5001",
-  "http://localhost:3000"
+  "http://localhost:3000",
 ];
 
 const corsMiddleware = cors({
@@ -64,6 +62,7 @@ const corsMiddleware = cors({
 app.use(corsMiddleware);
 app.options("*", corsMiddleware);
 
+/* -------------------- HEALTH CHECK -------------------- */
 app.use("/api/v1/health", (req, res) => {
   res.status(200).json({ message: "Health check successful" });
 });
@@ -72,7 +71,6 @@ app.use("/api/v1/health", (req, res) => {
 app.use(authMiddleware);
 
 /* -------------------- ROUTES -------------------- */
-
 app.use("/api/v1/users", usersRouter);
 app.use("/api/v1/restaurant", restaurantRouter);
 app.use("/api/v1/category", categoryRouter);
@@ -102,12 +100,17 @@ mongoose.connection.once("open", () => {
   console.log("Connected to MongoDB");
 });
 
-
 /* -------------------- EXPORT FOR LAMBDA -------------------- */
 const handler = serverless(app);
 
 module.exports.handler = async (event, context) => {
-  await connectDB();   // 👈 Lambda will WAIT here
+  // Prevents Lambda from waiting for open MongoDB connections
+  // Without this, Lambda hangs until timeout after the response is sent
+  context.callbackWaitsForEmptyEventLoop = false;
+
+  // Connect to DB (connectDB must have readyState check inside it)
+  await connectDB();
+
   return handler(event, context);
 };
 

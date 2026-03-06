@@ -10,17 +10,16 @@ const connectDB = async () => {
 
   try {
     console.log("Connecting to MongoDB...");
-    console.log(process.env.DATABASE_URI)
     const db = await mongoose.connect(process.env.DATABASE_URI, {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
-      tls: true,
+      // Removed tls: true — Atlas handles this via the connection string
     });
 
-    isConnected = db.connections[0].readyState;
-
+    isConnected = db.connections[0].readyState === 1; // Store as boolean, not number
     console.log("MongoDB connected successfully");
   } catch (error) {
+    isConnected = false; // Reset so next request can retry
     console.error("MongoDB connection error:", error);
     throw error;
   }
