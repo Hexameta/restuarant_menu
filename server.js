@@ -32,6 +32,8 @@ app.use(cookieParser());
 const allowedOrigins = [
   "https://admin.digifymenu.com",
   "https://menu.digifymenu.com",
+  "https://admin.digifymenu.in",
+  "https://menu.digifymenu.in",
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5001",
