@@ -3,9 +3,9 @@ const { sendResponse } = require("../utils/responseHelper");
 
 const authMiddleware = (req, res, next) => {
 
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
+ if (req.method === "OPTIONS") {
+  return next();
+}
   
   // Check for excluded routes
   const publicPaths = [

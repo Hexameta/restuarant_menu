@@ -32,7 +32,7 @@ app.use(cookieParser());
 const allowedOrigins = [
   "https://admin.digifymenu.com",
   "https://menu.digifymenu.com",
-  "https://admin.digifymenu.in",
+   "https://admin.digifymenu.in",
   "https://menu.digifymenu.in",
   "http://localhost:5173",
   "http://localhost:5174",
@@ -65,7 +65,7 @@ app.use(corsMiddleware);
 app.options("*", corsMiddleware);
 
 app.get("/api/v1/health", (req, res) => {
-  res.status(200).json({ message: "Health check successful" });
+  res.status(200).json({ message: "Health check successfull" });
 });
 
 /* -------------------- AUTH -------------------- */
