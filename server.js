@@ -66,11 +66,11 @@ app.get("/api/v1/health", (req, res) => {
   res.status(200).json({ message: "Health check successful" });
 });
 
+app.use("/api/v1/users", usersRouter);
 /* -------------------- AUTH -------------------- */
 app.use(authMiddleware);
 
 /* -------------------- ROUTES -------------------- */
-app.use("/api/v1/users", usersRouter);
 app.use("/api/v1/restaurant", restaurantRouter);
 app.use("/api/v1/category", categoryRouter);
 app.use("/api/v1/image-upload", imageUploadRouter);
