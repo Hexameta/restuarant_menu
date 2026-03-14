@@ -19,11 +19,20 @@ restaurantSchema.index({ status: 1 });
 
 const Restaurant = mongoose.model('Restaurant', restaurantSchema);
 
+const emergencySchema = new Schema({
+    emegerncy_inactive_title: String,
+    emergency_inactive_message: String,
+    is_emergency_inactive: {
+        type: Boolean,
+        default: false
+    }
+});
 const settingsSchema = new Schema({
     logo: String,
     currency: String,
     symbol: String,
     pdf_menu_url: String,
+    emergency: emergencySchema,
     symbol_position: {
         type: String,
         enum: ['left', 'right']
@@ -62,6 +71,7 @@ const branchSchema = new Schema({
     },
     settings: settingsSchema // Embedded settings
 }, { timestamps: true });
+
 
 // Indexes for performance
 branchSchema.index({ restaurant_id: 1 });
