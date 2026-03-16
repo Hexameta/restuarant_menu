@@ -104,6 +104,9 @@ mongoose.connection.once("open", () => {
 /* -------------------- EXPORT FOR LAMBDA -------------------- */
 const handler = serverless(app);
 
+// Start connection during the Lambda INIT phase to mitigate cold start latency
+connectDB().catch((err) => console.error("Initial DB connection failed:", err));
+
 module.exports.handler = async (event, context) => {
   // Prevents Lambda from waiting for open MongoDB connections
   // Without this, Lambda hangs until timeout after the response is sent
