@@ -65,7 +65,8 @@ const getAds = async (req, res) => {
     const rows = await Ads.find(filter)
       .sort({ _id: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     return res.status(200).json({
       success: true,
@@ -93,7 +94,7 @@ const getActiveAds = async (req, res) => {
       branch_id,
       valid_from: { $lte: now },
       valid_to: { $gte: now },
-    }).sort({ _id: -1 });
+    }).sort({ _id: -1 }).lean();
 
     return res.status(200).json({ success: true, data: ads });
   } catch (error) {

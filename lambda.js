@@ -108656,7 +108656,7 @@ var require_restaurantController = __commonJS({
         if (search) {
           filter.name = { $regex: search, $options: "i" };
         }
-        const restaurants = await Restaurant.find(filter).select("name logo");
+        const restaurants = await Restaurant.find(filter).select("name logo").lean();
         return sendResponse(
           res,
           200,
@@ -108816,7 +108816,7 @@ var require_restaurantController = __commonJS({
     var getResturantById = async (req, res) => {
       try {
         const { branchId } = req.user;
-        const restaurant = await Branch.findById(branchId);
+        const restaurant = await Branch.findById(branchId).lean();
         if (!restaurant) {
           return sendResponse(res, 404, "Restaurant not found");
         }
@@ -108942,7 +108942,7 @@ var require_restaurantController = __commonJS({
         });
         const branchCategories = await Category.find({
           branch_id: branchId
-        }).select("_id");
+        }).select("_id").lean();
         const categoryIds = branchCategories.map((c4) => c4._id);
         const totalItems = await MenuItem2.countDocuments({
           category_id: { $in: categoryIds }
@@ -109108,7 +109108,7 @@ var require_categoryController = __commonJS({
         const skip = (page - 1) * limit;
         const filter = { branch_id, is_deleted: false };
         const totalCount = await Category.countDocuments(filter);
-        const rows = await Category.find(filter).sort({ display_order: 1 }).skip(skip).limit(limit);
+        const rows = await Category.find(filter).sort({ display_order: 1 }).skip(skip).limit(limit).lean();
         return sendResponse(res, 200, "Categories fetched successfully", rows, {
           totalCount,
           currentPage: page,
@@ -109122,7 +109122,7 @@ var require_categoryController = __commonJS({
     var getCategoryById = async (req, res) => {
       try {
         const { id } = req.params;
-        const category = await Category.findById(id);
+        const category = await Category.findById(id).lean();
         if (!category) {
           return res.status(404).json({
             success: false,
@@ -109210,7 +109210,7 @@ var require_categoryController = __commonJS({
         if (branch_id) {
           filter.branch_id = branch_id;
         }
-        const categories = await Category.find(filter).sort({ name: 1 }).limit(10);
+        const categories = await Category.find(filter).sort({ name: 1 }).limit(10).lean();
         return sendResponse(res, 200, "Categories fetched successfully", categories);
       } catch (error2) {
         console.error("Search Category Error:", error2);
@@ -117243,7 +117243,7 @@ var require_menuItemController = __commonJS({
           filter.category_id = category_id;
         }
         if (branch_id) {
-          const branchCategories = await Category.find({ branch_id }).select("_id");
+          const branchCategories = await Category.find({ branch_id }).select("_id").lean();
           const categoryIds = branchCategories.map((c4) => c4._id);
           if (category_id) {
             const isCategoryInBranch = categoryIds.some((id) => id.toString() === category_id);
@@ -117260,7 +117260,7 @@ var require_menuItemController = __commonJS({
           }
         }
         const totalCount = await MenuItem2.countDocuments(filter);
-        const rows = await MenuItem2.find(filter).populate("category_id").sort({ _id: -1 }).skip(skip).limit(limit);
+        const rows = await MenuItem2.find(filter).populate("category_id").sort({ _id: -1 }).skip(skip).limit(limit).lean();
         return sendResponse(res, 200, "Menu items fetched successfully", rows, {
           totalCount,
           currentPage: page,
@@ -117274,7 +117274,7 @@ var require_menuItemController = __commonJS({
     var getItemsByCategory = async (req, res) => {
       try {
         const { category_id } = req.params;
-        const items = await MenuItem2.find({ category_id }).sort({ _id: -1 });
+        const items = await MenuItem2.find({ category_id }).sort({ _id: -1 }).lean();
         return sendResponse(res, 200, "Menu items fetched successfully", items);
       } catch (error2) {
         return sendResponse(res, 500, "Internal Server Error", errorHandler(error2));
@@ -117283,7 +117283,7 @@ var require_menuItemController = __commonJS({
     var getMenuItemById = async (req, res) => {
       try {
         const { id } = req.params;
-        const item = await MenuItem2.findById(id);
+        const item = await MenuItem2.findById(id).lean();
         if (!item) {
           return sendResponse(res, 404, "Menu item not found");
         }
@@ -117362,7 +117362,7 @@ var require_menuItemController = __commonJS({
         if (category_id) {
           filter.category_id = category_id;
         }
-        const items = await MenuItem2.find(filter).sort({ name: 1 }).limit(10);
+        const items = await MenuItem2.find(filter).sort({ name: 1 }).limit(10).lean();
         return sendResponse(res, 200, "Menu items fetched successfully", items);
       } catch (error2) {
         return sendResponse(res, 500, "Internal Server Error", errorHandler(error2));
@@ -117418,7 +117418,7 @@ var require_menuItemController = __commonJS({
           filter.category_id = category_id;
         }
         if (branch_id) {
-          const branchCategories = await Category.find({ branch_id }).select("_id");
+          const branchCategories = await Category.find({ branch_id }).select("_id").lean();
           const categoryIds = branchCategories.map((c4) => c4._id);
           if (category_id) {
             const isCategoryInBranch = categoryIds.some((id) => id.toString() === category_id);
@@ -117435,7 +117435,7 @@ var require_menuItemController = __commonJS({
           }
         }
         const totalCount = await MenuItem2.countDocuments(filter);
-        const rows = await MenuItem2.find(filter).populate("category_id").sort({ _id: -1 }).skip(skip).limit(limit);
+        const rows = await MenuItem2.find(filter).populate("category_id").sort({ _id: -1 }).skip(skip).limit(limit).lean();
         return sendResponse(res, 200, "Inactive menu items fetched successfully", rows, {
           totalCount,
           currentPage: page,
@@ -117544,7 +117544,7 @@ var require_adsController = __commonJS({
         const skip = (page - 1) * limit;
         const filter = { branch_id, is_admin: false, is_expired: false };
         const count = await Ads.countDocuments(filter);
-        const rows = await Ads.find(filter).sort({ _id: -1 }).skip(skip).limit(limit);
+        const rows = await Ads.find(filter).sort({ _id: -1 }).skip(skip).limit(limit).lean();
         return res.status(200).json({
           success: true,
           data: rows,
@@ -117566,7 +117566,7 @@ var require_adsController = __commonJS({
           branch_id,
           valid_from: { $lte: now },
           valid_to: { $gte: now }
-        }).sort({ _id: -1 });
+        }).sort({ _id: -1 }).lean();
         return res.status(200).json({ success: true, data: ads });
       } catch (error2) {
         return res.status(500).json(errorHandler(error2));
@@ -151446,7 +151446,7 @@ var require_specialTagController = __commonJS({
     var getSpecialTags = async (req, res) => {
       try {
         const branch_id = req.user.branchId;
-        const tags = await SpecialTag.find({ branch_id }).sort({ display_order: 1 });
+        const tags = await SpecialTag.find({ branch_id }).sort({ display_order: 1 }).lean();
         return sendResponse(res, 200, "Special tags fetched successfully", tags);
       } catch (error2) {
         return res.status(500).json(errorHandler(error2));
@@ -151495,7 +151495,7 @@ var require_specialTagController = __commonJS({
         const tag2 = await SpecialTag.findById(tag_id).populate({
           path: "menu_items",
           select: "name image_url"
-        });
+        }).lean();
         if (!tag2) {
           return sendResponse(res, 404, "Special tag not found");
         }

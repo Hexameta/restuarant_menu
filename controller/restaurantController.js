@@ -28,7 +28,7 @@ const searchRestaurants = async (req, res) => {
       filter.name = { $regex: search, $options: "i" }; // Case-insensitive partial match
     }
 
-    const restaurants = await Restaurant.find(filter).select("name logo");
+    const restaurants = await Restaurant.find(filter).select("name logo").lean();
 
     // Map _id to id for frontend compatibility if needed, or just return as is
     // Mongoose returns _id by default.
@@ -230,7 +230,7 @@ const getResturantById = async (req, res) => {
     const { branchId } = req.user;
 
     // In Mongoose, settings are embedded in Branch
-    const restaurant = await Branch.findById(branchId);
+    const restaurant = await Branch.findById(branchId).lean();
 
     if (!restaurant) {
       return sendResponse(res, 404, "Restaurant not found");
@@ -393,7 +393,7 @@ const getAnalytics = async (req, res) => {
 
     const branchCategories = await Category.find({
       branch_id: branchId,
-    }).select("_id");
+    }).select("_id").lean();
     const categoryIds = branchCategories.map((c) => c._id);
 
     const totalItems = await MenuItem.countDocuments({

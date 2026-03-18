@@ -66,7 +66,8 @@ const getCategories = async (req, res) => {
     const rows = await Category.find(filter)
       .sort({ display_order: 1 }) // ASC
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     return sendResponse(res, 200, "Categories fetched successfully", rows, {
       totalCount: totalCount,
@@ -87,7 +88,7 @@ const getCategoryById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const category = await Category.findById(id);
+    const category = await Category.findById(id).lean();
     if (!category) {
       return res.status(404).json({
         success: false,
@@ -202,7 +203,8 @@ const searchCategory = async (req, res) => {
 
     const categories = await Category.find(filter)
       .sort({ name: 1 })
-      .limit(10);
+      .limit(10)
+      .lean();
 
     return sendResponse(res, 200, "Categories fetched successfully", categories);
 

@@ -90,7 +90,7 @@ const getMenuItems = async (req, res) => {
     // 🟥 FILTER: BRANCH
     if (branch_id) {
       // Find all categories for this branch first
-      const branchCategories = await Category.find({ branch_id: branch_id }).select('_id');
+      const branchCategories = await Category.find({ branch_id: branch_id }).select('_id').lean();
       const categoryIds = branchCategories.map(c => c._id);
       
       // If we also had a category_id filter, we need to make sure it belongs to the branch
@@ -115,7 +115,8 @@ const getMenuItems = async (req, res) => {
       .populate('category_id') // Populate category info if needed
       .sort({ _id: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     return sendResponse(res, 200, "Menu items fetched successfully", rows, {
       totalCount: totalCount,
@@ -138,7 +139,8 @@ const getItemsByCategory = async (req, res) => {
     const { category_id } = req.params;
 
     const items = await MenuItem.find({ category_id })
-      .sort({ _id: -1 });
+      .sort({ _id: -1 })
+      .lean();
 
     return sendResponse(res, 200, "Menu items fetched successfully", items);
 
@@ -154,7 +156,7 @@ const getMenuItemById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const item = await MenuItem.findById(id);
+    const item = await MenuItem.findById(id).lean();
     if (!item) {
       return sendResponse(res, 404, "Menu item not found");
     }
@@ -270,7 +272,8 @@ const searchMenuItem = async (req, res) => {
 
     const items = await MenuItem.find(filter)
       .sort({ name: 1 })
-      .limit(10);
+      .limit(10)
+      .lean();
 
     return sendResponse(res, 200, "Menu items fetched successfully", items);
 
@@ -352,7 +355,7 @@ const getInactiveMenuItems = async (req, res) => {
     // 🟥 FILTER: BRANCH
     if (branch_id) {
       // Find all categories for this branch first
-      const branchCategories = await Category.find({ branch_id: branch_id }).select('_id');
+      const branchCategories = await Category.find({ branch_id: branch_id }).select('_id').lean();
       const categoryIds = branchCategories.map(c => c._id);
       
       // If we also had a category_id filter, we need to make sure it belongs to the branch
@@ -377,7 +380,8 @@ const getInactiveMenuItems = async (req, res) => {
       .populate('category_id') // Populate category info if needed
       .sort({ _id: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     return sendResponse(res, 200, "Inactive menu items fetched successfully", rows, {
       totalCount: totalCount,
