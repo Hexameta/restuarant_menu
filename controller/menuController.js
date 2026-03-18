@@ -175,7 +175,93 @@ const logMenuAccess = async (req, res) => {
     }
 };
 
+// API for FULL Menu Loading (Optimized Single Endpoint)
+const getFullMenuBySlug = async (req, res) => {
+    try {
+        const { slug } = req.params;
+
+        // 1. Get branch ID synchronously to root the other queries
+        const branch = await Branch.findOne({ slug: slug, is_active: true }).lean();
+        
+        if (!branch) {
+            return sendResponse(res, 404, "Branch not found");
+        }
+
+        const branchId = branch._id;
+        const now = new Date();
+
+        // 2. Launch concurrent queries
+        const pSpecial = SpecialTag.find({ branch_id: branchId })
+            .sort({ display_order: 1 })
+            .populate({
+                path: 'menu_items',
+                model: 'MenuItem', 
+            })
+            .lean();
+
+        const pCarousel = Ads.find({ 
+            branch_id: branchId,
+            is_expired: false,
+            valid_from: { $lte: now },
+            valid_to: { $gte: now }
+        }).lean();
+
+        // Dependent Topologies (Category -> Menu Items)
+        const pCategoriesAndMenu = (async () => {
+            const categories = await Category.find({
+                branch_id: branchId,
+                is_active: true,
+                is_deleted: false
+            }).sort({ display_order: 1 }).lean();
+
+            const categoryIds = categories.map(c => c._id);
+            
+            // Short circuit if no categories exist
+            if (categoryIds.length === 0) {
+                return { categories: [], menuItems: [] };
+            }
+
+            const menuItems = await MenuItem.find({
+                category_id: { $in: categoryIds }
+            })
+            .sort({ is_available: -1, created_at: 1 }) 
+            .populate({ path: 'category_id', select: 'name' })
+            .lean();
+
+            return { categories, menuItems };
+        })();
+
+        // Resolve all parent blocks concurrently
+        const [specialTagsRaw, carasoulMenuItems, catAndMenu] = await Promise.all([
+            pSpecial,
+            pCarousel,
+            pCategoriesAndMenu
+        ]);
+
+        // Format Special Items exactly like previous endpoint
+        const specialMenuItems = specialTagsRaw.map(tag => ({
+            id: tag._id,
+            title: tag.title,
+            special_items: tag.menu_items
+        }));
+
+        // Combine Response
+        return sendResponse(res, 200, "Full menu retrieved successfully", {
+            restaurant: branch,
+            categories: catAndMenu.categories,
+            menuItems: catAndMenu.menuItems,
+            specialItems: specialMenuItems,
+            carousel: carasoulMenuItems
+        });
+
+    } catch (error) {
+        console.error("Get Full Menu By Slug Error:", error);
+        return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
+    }
+};
+
 module.exports = {
+    getFullMenuBySlug,
     getBranchDetailsByslug,
     getCategoriesbyIdForMenu,
     getMenuItemsByBranchIdForMenu,

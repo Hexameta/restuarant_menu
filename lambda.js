@@ -151716,7 +151716,64 @@ var require_menuController = __commonJS({
         return sendResponse(res, 500, "Internal Server Error", errorHandler(error2));
       }
     };
+    var getFullMenuBySlug = async (req, res) => {
+      try {
+        const { slug } = req.params;
+        const branch = await Branch.findOne({ slug, is_active: true }).lean();
+        if (!branch) {
+          return sendResponse(res, 404, "Branch not found");
+        }
+        const branchId = branch._id;
+        const now = /* @__PURE__ */ new Date();
+        const pSpecial = SpecialTag.find({ branch_id: branchId }).sort({ display_order: 1 }).populate({
+          path: "menu_items",
+          model: "MenuItem"
+        }).lean();
+        const pCarousel = Ads.find({
+          branch_id: branchId,
+          is_expired: false,
+          valid_from: { $lte: now },
+          valid_to: { $gte: now }
+        }).lean();
+        const pCategoriesAndMenu = (async () => {
+          const categories = await Category.find({
+            branch_id: branchId,
+            is_active: true,
+            is_deleted: false
+          }).sort({ display_order: 1 }).lean();
+          const categoryIds = categories.map((c4) => c4._id);
+          if (categoryIds.length === 0) {
+            return { categories: [], menuItems: [] };
+          }
+          const menuItems = await MenuItem2.find({
+            category_id: { $in: categoryIds }
+          }).sort({ is_available: -1, created_at: 1 }).populate({ path: "category_id", select: "name" }).lean();
+          return { categories, menuItems };
+        })();
+        const [specialTagsRaw, carasoulMenuItems, catAndMenu] = await Promise.all([
+          pSpecial,
+          pCarousel,
+          pCategoriesAndMenu
+        ]);
+        const specialMenuItems = specialTagsRaw.map((tag2) => ({
+          id: tag2._id,
+          title: tag2.title,
+          special_items: tag2.menu_items
+        }));
+        return sendResponse(res, 200, "Full menu retrieved successfully", {
+          restaurant: branch,
+          categories: catAndMenu.categories,
+          menuItems: catAndMenu.menuItems,
+          specialItems: specialMenuItems,
+          carousel: carasoulMenuItems
+        });
+      } catch (error2) {
+        console.error("Get Full Menu By Slug Error:", error2);
+        return sendResponse(res, 500, "Internal Server Error", errorHandler(error2));
+      }
+    };
     module2.exports = {
+      getFullMenuBySlug,
       getBranchDetailsByslug,
       getCategoriesbyIdForMenu,
       getMenuItemsByBranchIdForMenu,
@@ -151732,7 +151789,8 @@ var require_menu = __commonJS({
   "routes/menu.js"(exports2, module2) {
     var express2 = require_express2();
     var router = express2.Router();
-    var { getBranchDetailsByslug, getCategoriesbyIdForMenu, getMenuItemsByBranchIdForMenu, getSpecialMenuItemsByBranchId, getCarasoulByBranchId, logMenuAccess } = require_menuController();
+    var { getFullMenuBySlug, getBranchDetailsByslug, getCategoriesbyIdForMenu, getMenuItemsByBranchIdForMenu, getSpecialMenuItemsByBranchId, getCarasoulByBranchId, logMenuAccess } = require_menuController();
+    router.get("/full/:slug", getFullMenuBySlug);
     router.get("/:slug", getBranchDetailsByslug);
     router.get("/category/:branchId", getCategoriesbyIdForMenu);
     router.get("/menu/:branchId", getMenuItemsByBranchIdForMenu);
