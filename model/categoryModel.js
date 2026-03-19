@@ -16,8 +16,8 @@ const categorySchema = new Schema({
     }
 }, { timestamps: true });
 
-// Compound index for fetching active categories by branch, ordered by display_order
-categorySchema.index({ branch_id: 1, is_active: 1, display_order: 1 });
+// Compound index covering: { branch_id, is_active, is_deleted } sorted by display_order
+categorySchema.index({ branch_id: 1, is_active: 1, is_deleted: 1, display_order: 1 });
 
 const Category = mongoose.model('Category', categorySchema);
 

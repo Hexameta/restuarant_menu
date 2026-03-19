@@ -21,7 +21,6 @@ const authMiddleware = (req, res, next) => {
   ];
 
   if (publicPaths.some((path) => req.path.startsWith(path))) {
-    console.log("public path", req.path);
     return next();
   }
 
@@ -85,8 +84,7 @@ const authMiddleware = (req, res, next) => {
     decoded = refreshDecoded;
   }
 
-  console.log(decoded);
-  
+
   if (!decoded.branchId && !decoded.newUser) {
     return sendResponse(res, 401, "Branch id missing in token.");
   }

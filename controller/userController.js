@@ -81,7 +81,6 @@ const signin = async (req, res) => {
     }
 
     let tokenPayload = {};
-    console.log(user.branch_id);
 
     if (user.branch_id !== null) {
       tokenPayload = {
@@ -98,13 +97,9 @@ const signin = async (req, res) => {
       };
     }
 
-    console.log(tokenPayload);
-
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
 
-    console.log(accessToken);
-    console.log(refreshToken);
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
@@ -188,7 +183,6 @@ const verifyOTPAndRegister = async (req, res) => {
     await otpRecord.save();
 
     let tokenPayload = {};
-    console.log(user.branch_id);
 
     if (user.branch_id !== null) {
       tokenPayload = {
@@ -204,8 +198,6 @@ const verifyOTPAndRegister = async (req, res) => {
         newUser: true,
       };
     }
-
-    console.log(tokenPayload);
 
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);

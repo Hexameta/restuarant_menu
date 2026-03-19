@@ -110,13 +110,15 @@ const getMenuItems = async (req, res) => {
       }
     }
 
-    const totalCount = await MenuItem.countDocuments(filter);
-    const rows = await MenuItem.find(filter)
-      .populate('category_id') // Populate category info if needed
-      .sort({ _id: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    const [totalCount, rows] = await Promise.all([
+      MenuItem.countDocuments(filter),
+      MenuItem.find(filter)
+        .populate('category_id')
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ]);
 
     return sendResponse(res, 200, "Menu items fetched successfully", rows, {
       totalCount: totalCount,
@@ -299,7 +301,7 @@ const checkMenuItemImageExistsDB = async (fileName, id = null) => {
       filter._id = { $ne: id };
     }
 
-    const exists = await MenuItem.findOne(filter);
+    const exists = await MenuItem.findOne(filter).select('_id').lean();
 
     return {
       success: true,
@@ -375,13 +377,15 @@ const getInactiveMenuItems = async (req, res) => {
       }
     }
 
-    const totalCount = await MenuItem.countDocuments(filter);
-    const rows = await MenuItem.find(filter)
-      .populate('category_id') // Populate category info if needed
-      .sort({ _id: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    const [totalCount, rows] = await Promise.all([
+      MenuItem.countDocuments(filter),
+      MenuItem.find(filter)
+        .populate('category_id')
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ]);
 
     return sendResponse(res, 200, "Inactive menu items fetched successfully", rows, {
       totalCount: totalCount,

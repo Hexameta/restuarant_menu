@@ -3,25 +3,27 @@ const mongoose = require("mongoose");
 let isConnected = false;
 let connectionPromise = null;
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const connectDB = async () => {
   if (isConnected) {
-    console.log("Using existing MongoDB connection");
     return;
   }
 
   if (connectionPromise) {
-    console.log("Waiting for existing connection attempt...");
     await connectionPromise;
     return;
   }
 
-  console.log("Connecting to MongoDB...");
   connectionPromise = mongoose.connect(process.env.DATABASE_URI, {
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
+    // Production optimizations
+    autoIndex: !isProduction, // Don't rebuild indexes on Lambda cold starts
+    maxPoolSize: 10,          // Allow more concurrent queries
+    minPoolSize: 2,           // Keep warm connections
   }).then((db) => {
     isConnected = db.connections[0].readyState === 1;
-    console.log("MongoDB connected successfully");
     return db;
   }).catch((error) => {
     isConnected = false;
@@ -34,3 +36,4 @@ const connectDB = async () => {
 };
 
 module.exports = connectDB;
+

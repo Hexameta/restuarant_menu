@@ -23,28 +23,30 @@ var menuRouter = require("./routes/menu.js");
 var app = express();
 
 /* -------------------- BASIC MIDDLEWARE -------------------- */
-app.use(logger("dev"));
+// Disable Morgan in production Lambda — each log is synchronous I/O overhead
+if (process.env.NODE_ENV !== "production") {
+  app.use(logger("dev"));
+}
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 /* -------------------- CORS -------------------- */
-const allowedOrigins = [
+const allowedOrigins = new Set([
   "https://admin.digifymenu.com",
   "https://menu.digifymenu.com",
-   "https://admin.digifymenu.in",
+  "https://admin.digifymenu.in",
   "https://menu.digifymenu.in",
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5001",
   "http://localhost:3000",
-];
+]);
 
 const corsMiddleware = cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true); // Postman, curl
 
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.has(origin)) {
       return callback(null, true);
     }
 
@@ -120,8 +122,7 @@ module.exports.handler = async (event, context) => {
 
 /* -------------------- LOCAL SERVER (ONLY FOR DEV) -------------------- */
 if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 5001;
-
+  const PORT = process.env.PORT || 5000;
   connectDB().then(() => {
     app.listen(PORT, () => {
       console.log(`Server running locally on port ${PORT}`);

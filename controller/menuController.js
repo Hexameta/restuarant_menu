@@ -1,38 +1,34 @@
 const { Ads } = require("../model/adsModal");
 const { Category } = require("../model/categoryModel");
 const { MenuItem } = require("../model/menuItemModel");
-const { Branch, Restaurant } = require("../model/resturantModel");
+const { Branch } = require("../model/resturantModel");
 const { SpecialTag } = require("../model/specialTagModel");
 const { MenuAccessLog } = require("../model/menuAccessLogModel");
 const { sendResponse } = require("../utils/responseHelper");
 const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
 
-// Helper to get branch ID from slug
-const getBranchIdFromSlug = async (slug) => {
-  const branch = await Branch.findOne({ slug: slug, is_active: true })
-    .select("_id")
-    .lean();
-  return branch ? branch._id : null;
-};
+// ─── Reusable field projections ───
+const BRANCH_SELECT = "-__v";
+const CATEGORY_SELECT = "_id name image_url is_active display_order";
+const MENU_ITEM_SELECT =
+  "_id category_id name description image_url is_available special_note tag no_price options";
+const CAROUSEL_SELECT = "_id branch_id title ad_type image_url valid_from valid_to";
+const SPECIAL_TAG_SELECT = "_id title display_order menu_items";
 
 // API for Restaurant Details
 const getBranchDetailsByslug = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    const branch = await Branch.findOne({ slug: slug, is_active: true }).lean();
-    // Settings are embedded, so we already have them in branch.settings
+    const branch = await Branch.findOne({ slug, is_active: true })
+      .select(BRANCH_SELECT)
+      .lean();
 
     if (!branch) {
       return sendResponse(res, 404, "Branch not found");
     }
 
-    return sendResponse(
-      res,
-      200,
-      "Branch details fetched successfully",
-      branch,
-    );
+    return sendResponse(res, 200, "Branch details fetched successfully", branch);
   } catch (error) {
     console.error("Get Restaurant Details By Branch Slug Error:", error);
     return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
@@ -44,10 +40,7 @@ const getCategoriesbyIdForMenu = async (req, res) => {
     const { branchId } = req.params;
 
     if (!branchId) {
-      return res.status(400).json({
-        success: false,
-        message: "Branch ID is required",
-      });
+      return sendResponse(res, 400, "Branch ID is required");
     }
 
     const category = await Category.find({
@@ -56,6 +49,7 @@ const getCategoriesbyIdForMenu = async (req, res) => {
       is_deleted: false,
     })
       .sort({ display_order: 1 })
+      .select(CATEGORY_SELECT)
       .lean();
 
     return sendResponse(res, 200, "Categories fetched successfully", category);
@@ -74,22 +68,41 @@ const getMenuItemsByBranchIdForMenu = async (req, res) => {
       return sendResponse(res, 404, "Branch not found");
     }
 
-    // Get all categories for this branch
+    // Fetch categories and build name map — avoids populate() round-trip
     const branchCategories = await Category.find({
       branch_id: branchId,
       is_deleted: false,
     })
-      .select("_id")
+      .select("_id name")
       .lean();
+
     const categoryIds = branchCategories.map((c) => c._id);
 
-    // Get Menu Items
+    if (categoryIds.length === 0) {
+      return sendResponse(res, 200, "Menu items fetched successfully", []);
+    }
+
+    // Build O(1) lookup map instead of populate
+    const categoryNameMap = {};
+    for (let i = 0; i < branchCategories.length; i++) {
+      categoryNameMap[branchCategories[i]._id.toString()] = branchCategories[i].name;
+    }
+
     const menuItems = await MenuItem.find({
       category_id: { $in: categoryIds },
     })
       .sort({ is_available: -1, created_at: 1 })
-      .populate({ path: "category_id", select: "name" })
+      .select(MENU_ITEM_SELECT)
       .lean();
+
+    // Attach category name in-memory (replaces populate)
+    for (let i = 0; i < menuItems.length; i++) {
+      const item = menuItems[i];
+      item.category_id = {
+        _id: item.category_id,
+        name: categoryNameMap[item.category_id.toString()] || null,
+      };
+    }
 
     return sendResponse(res, 200, "Menu items fetched successfully", menuItems);
   } catch (error) {
@@ -106,22 +119,26 @@ const getSpecialMenuItemsByBranchId = async (req, res) => {
       return sendResponse(res, 400, "Branch ID is required");
     }
 
-    // In the new model, SpecialTag has `menu_items` array of References.
-    // We populate that array.
     const specialMenuItems = await SpecialTag.find({ branch_id: branchId })
       .sort({ display_order: 1 })
+      .select(SPECIAL_TAG_SELECT)
       .populate({
         path: "menu_items",
         model: "MenuItem",
+        select: MENU_ITEM_SELECT,
       })
       .lean();
 
-    // Filter out tags that might have empty menu_items if desired, or just map
-    const finalData = specialMenuItems.map((tag) => ({
-      id: tag._id,
-      title: tag.title,
-      special_items: tag.menu_items,
-    }));
+    // Pre-allocate result array
+    const finalData = new Array(specialMenuItems.length);
+    for (let i = 0; i < specialMenuItems.length; i++) {
+      const tag = specialMenuItems[i];
+      finalData[i] = {
+        id: tag._id,
+        title: tag.title,
+        special_items: tag.menu_items,
+      };
+    }
 
     return sendResponse(
       res,
@@ -149,9 +166,9 @@ const getCarasoulByBranchId = async (req, res) => {
       is_expired: false,
       valid_from: { $lte: now },
       valid_to: { $gte: now },
-    }).lean();
-
-    console.log("Carousel items fetched successfully", carasoulMenuItems);
+    })
+      .select(CAROUSEL_SELECT)
+      .lean();
 
     return sendResponse(
       res,
@@ -165,45 +182,48 @@ const getCarasoulByBranchId = async (req, res) => {
   }
 };
 
-// API for logging menu access when QR code is scanned
+// API for logging menu access — fire-and-forget for fastest response
 const logMenuAccess = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    // Find branch by slug
-    const branch = await Branch.findOne({ slug: slug, is_active: true }).select(
-      "_id",
-    );
+    const branch = await Branch.findOne({ slug, is_active: true })
+      .select("_id")
+      .lean();
 
     if (!branch) {
       return sendResponse(res, 404, "Branch not found");
     }
 
-    // Create log entry
-    const logEntry = new MenuAccessLog({
+    // Respond immediately, write log in background (fire-and-forget)
+    sendResponse(res, 201, "Menu access logged successfully", {
       branch_id: branch._id,
       accessed_at: new Date(),
     });
-    await logEntry.save();
 
-    return sendResponse(res, 201, "Menu access logged successfully", {
-      log_id: logEntry._id,
-      branch_id: logEntry.branch_id,
-      accessed_at: logEntry.accessed_at,
-    });
+    // Non-blocking DB write — uses create() (single round-trip vs new+save)
+    MenuAccessLog.create({
+      branch_id: branch._id,
+      accessed_at: new Date(),
+    }).catch((err) => console.error("Menu access log write failed:", err));
   } catch (error) {
     console.error("Log Menu Access Error:", error);
-    return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
+    // Only send error if headers haven't been sent
+    if (!res.headersSent) {
+      return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
+    }
   }
 };
 
-// API for FULL Menu Loading (Optimized Single Endpoint)
+// ─── FULL MENU — Maximum Optimization ───
 const getFullMenuBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    // 1. Get branch ID synchronously to root the other queries
-    const branch = await Branch.findOne({ slug: slug, is_active: true }).lean();
+    // 1. Branch lookup — required before parallel queries
+    const branch = await Branch.findOne({ slug, is_active: true })
+      .select(BRANCH_SELECT)
+      .lean();
 
     if (!branch) {
       return sendResponse(res, 404, "Branch not found");
@@ -212,68 +232,117 @@ const getFullMenuBySlug = async (req, res) => {
     const branchId = branch._id;
     const now = new Date();
 
-    // 2. Launch concurrent queries
-    const pSpecial = SpecialTag.find({ branch_id: branchId })
-      .sort({ display_order: 1 })
-      .populate({
-        path: "menu_items",
-        model: "MenuItem",
-      })
-      .lean();
-
-    const pCarousel = Ads.find({
-      branch_id: branchId,
-      is_expired: false,
-      valid_from: { $lte: now },
-      valid_to: { $gte: now },
-    }).lean();
-
-    // Dependent Topologies (Category -> Menu Items)
-    const pCategoriesAndMenu = (async () => {
-      const categories = await Category.find({
+    // 2. Launch ALL independent queries in parallel
+    const [categories, specialTagsRaw, carasoulMenuItems] = await Promise.all([
+      // Categories
+      Category.find({
         branch_id: branchId,
         is_active: true,
         is_deleted: false,
       })
         .sort({ display_order: 1 })
-        .lean();
+        .select(CATEGORY_SELECT)
+        .lean(),
 
-      const categoryIds = categories.map((c) => c._id);
+      // Special tags (without populate — we'll batch-fetch items separately)
+      SpecialTag.find({ branch_id: branchId })
+        .sort({ display_order: 1 })
+        .select(SPECIAL_TAG_SELECT)
+        .lean(),
 
-      // Short circuit if no categories exist
-      if (categoryIds.length === 0) {
-        return { categories: [], menuItems: [] };
-      }
-
-      const menuItems = await MenuItem.find({
-        category_id: { $in: categoryIds },
+      // Carousel / Ads
+      Ads.find({
+        branch_id: branchId,
+        is_expired: false,
+        valid_from: { $lte: now },
+        valid_to: { $gte: now },
       })
-        .sort({ is_available: -1, created_at: 1 })
-        .populate({ path: "category_id", select: "name" })
-        .lean();
-
-      return { categories, menuItems };
-    })();
-
-    // Resolve all parent blocks concurrently
-    const [specialTagsRaw, carasoulMenuItems, catAndMenu] = await Promise.all([
-      pSpecial,
-      pCarousel,
-      pCategoriesAndMenu,
+        .select(CAROUSEL_SELECT)
+        .lean(),
     ]);
 
-    // Format Special Items exactly like previous endpoint
-    const specialMenuItems = specialTagsRaw.map((tag) => ({
-      id: tag._id,
-      title: tag.title,
-      special_items: tag.menu_items,
-    }));
+    // 3. Build category ID list and name map (O(n) — microseconds)
+    const categoryIds = new Array(categories.length);
+    const categoryNameMap = {};
+    for (let i = 0; i < categories.length; i++) {
+      const cat = categories[i];
+      categoryIds[i] = cat._id;
+      categoryNameMap[cat._id.toString()] = cat.name;
+    }
+
+    // 4. Collect all special item IDs for batch fetch
+    const specialItemIdSet = new Set();
+    for (let i = 0; i < specialTagsRaw.length; i++) {
+      const items = specialTagsRaw[i].menu_items;
+      if (items) {
+        for (let j = 0; j < items.length; j++) {
+          specialItemIdSet.add(items[j].toString());
+        }
+      }
+    }
+    const specialItemIds = Array.from(specialItemIdSet);
+
+    // 5. Fetch menu items and special items in parallel (no populate!)
+    const menuItemsQuery =
+      categoryIds.length > 0
+        ? MenuItem.find({ category_id: { $in: categoryIds } })
+            .sort({ is_available: -1, created_at: 1 })
+            .select(MENU_ITEM_SELECT)
+            .lean()
+        : Promise.resolve([]);
+
+    const specialItemsQuery =
+      specialItemIds.length > 0
+        ? MenuItem.find({ _id: { $in: specialItemIds } })
+            .select(MENU_ITEM_SELECT)
+            .lean()
+        : Promise.resolve([]);
+
+    const [menuItems, specialItemDocs] = await Promise.all([
+      menuItemsQuery,
+      specialItemsQuery,
+    ]);
+
+    // 6. Attach category names to menuItems in-memory (replaces populate)
+    for (let i = 0; i < menuItems.length; i++) {
+      const item = menuItems[i];
+      item.category_id = {
+        _id: item.category_id,
+        name: categoryNameMap[item.category_id.toString()] || null,
+      };
+    }
+
+    // 7. Build special item lookup map (O(n))
+    const specialItemMap = {};
+    for (let i = 0; i < specialItemDocs.length; i++) {
+      specialItemMap[specialItemDocs[i]._id.toString()] = specialItemDocs[i];
+    }
+
+    // 8. Format special tags with resolved items
+    const specialMenuItems = new Array(specialTagsRaw.length);
+    for (let i = 0; i < specialTagsRaw.length; i++) {
+      const tag = specialTagsRaw[i];
+      const resolvedItems = [];
+      if (tag.menu_items) {
+        for (let j = 0; j < tag.menu_items.length; j++) {
+          const doc = specialItemMap[tag.menu_items[j].toString()];
+          if (doc) resolvedItems.push(doc);
+        }
+      }
+      specialMenuItems[i] = {
+        id: tag._id,
+        title: tag.title,
+        special_items: resolvedItems,
+      };
+    }
+
+    // 9. Set cache header and respond
     res.set("Cache-Control", "public, max-age=120");
-    // Combine Response
+
     return sendResponse(res, 200, "Full menu retrieved successfully", {
       restaurant: branch,
-      categories: catAndMenu.categories,
-      menuItems: catAndMenu.menuItems,
+      categories,
+      menuItems,
       specialItems: specialMenuItems,
       carousel: carasoulMenuItems,
     });

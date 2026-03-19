@@ -65,7 +65,7 @@ const branchSchema = new Schema({
 
 // Indexes for performance
 branchSchema.index({ restaurant_id: 1 });
-branchSchema.index({ slug: 1 });
+// slug index is auto-created by `unique: true` — no need to duplicate
 branchSchema.index({ status: 1 });
 branchSchema.index({ is_active: 1 });
 

@@ -29,6 +29,7 @@ const menuItemSchema = new Schema({
 // Indexes for performance
 menuItemSchema.index({ category_id: 1, is_available: 1 });
 menuItemSchema.index({ name: 1 }); // For search
+menuItemSchema.index({ image_url: 1 }); // For image-exists checks
 
 const MenuItem = mongoose.model('MenuItem', menuItemSchema);
 

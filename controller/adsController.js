@@ -61,12 +61,14 @@ const getAds = async (req, res) => {
 
     const filter = { branch_id, is_admin: false, is_expired: false };
 
-    const count = await Ads.countDocuments(filter);
-    const rows = await Ads.find(filter)
-      .sort({ _id: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    const [count, rows] = await Promise.all([
+      Ads.countDocuments(filter),
+      Ads.find(filter)
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ]);
 
     return res.status(200).json({
       success: true,
@@ -176,7 +178,7 @@ const checkAdsImageExistsDB = async (fileName, id = null) => {
       filter._id = { $ne: id };
     }
 
-    const exists = await Ads.findOne(filter);
+    const exists = await Ads.findOne(filter).select('_id').lean();
 
     return {
       success: true,

@@ -182,7 +182,6 @@ const createBranch = async (req, res) => {
 
     const user = await User.findById(userId).session(session);
 
-    console.log(user);
 
     // Mongoose objects are BSON, need .toObject() or direct access usually works but better to be safe for JWT
     const userPayload = {
@@ -368,7 +367,7 @@ const getAnalytics = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    const branch = await Branch.findOne({ slug: slug, is_active: true });
+    const branch = await Branch.findOne({ slug: slug, is_active: true }).select('_id').lean();
 
     if (!branch) {
       return res.status(404).json({
@@ -379,39 +378,32 @@ const getAnalytics = async (req, res) => {
 
     const branchId = branch._id;
 
-    // 1) categories
-    const totalCategories = await Category.countDocuments({
-      branch_id: branchId,
-      is_active: true,
-    });
-
-    // 2) items (through category) if categories are linked
-    // In Mongoose, MenuItem has category_id. We need to find categories for this branch first?
-    // Or if MenuItem has direct branch_id?
-    // Checking MenuItem model... Only category_id.
-    // So: Find all categories for branch -> Get their IDs -> Count MenuItems with those Category IDs.
-
+    // Parallelize all counts — no dependencies between them
     const branchCategories = await Category.find({
       branch_id: branchId,
     }).select("_id").lean();
     const categoryIds = branchCategories.map((c) => c._id);
 
-    const totalItems = await MenuItem.countDocuments({
-      category_id: { $in: categoryIds },
-    });
-
-    // 3) monthly visitors
-    const visitors = await MenuAccessLog.aggregate([
-      { $match: { branch_id: branchId } },
-      {
-        $group: {
-          _id: {
-            month: { $month: "$accessed_at" },
-            year: { $year: "$accessed_at" },
+    const [totalCategories, totalItems, visitors] = await Promise.all([
+      Category.countDocuments({
+        branch_id: branchId,
+        is_active: true,
+      }),
+      categoryIds.length > 0
+        ? MenuItem.countDocuments({ category_id: { $in: categoryIds } })
+        : Promise.resolve(0),
+      MenuAccessLog.aggregate([
+        { $match: { branch_id: branchId } },
+        {
+          $group: {
+            _id: {
+              month: { $month: "$accessed_at" },
+              year: { $year: "$accessed_at" },
+            },
+            count: { $sum: 1 },
           },
-          count: { $sum: 1 },
         },
-      },
+      ]),
     ]);
 
     let monthlyVisitors = Array(12).fill(0);

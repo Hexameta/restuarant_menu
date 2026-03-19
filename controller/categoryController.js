@@ -62,12 +62,14 @@ const getCategories = async (req, res) => {
 
     const filter = { branch_id, is_deleted: false };
 
-    const totalCount = await Category.countDocuments(filter);
-    const rows = await Category.find(filter)
-      .sort({ display_order: 1 }) // ASC
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    const [totalCount, rows] = await Promise.all([
+      Category.countDocuments(filter),
+      Category.find(filter)
+        .sort({ display_order: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ]);
 
     return sendResponse(res, 200, "Categories fetched successfully", rows, {
       totalCount: totalCount,
@@ -230,7 +232,7 @@ const checkCategoryImageExistsDB = async (fileName, id = null) => {
       filter._id = { $ne: id };
     }
 
-    const exists = await Category.findOne(filter);
+    const exists = await Category.findOne(filter).select('_id').lean();
 
     return {
       success: true,
