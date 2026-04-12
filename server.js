@@ -1,6 +1,5 @@
 var createError = require("http-errors");
 var express = require("express");
-var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 var cors = require("cors");
 const mongoose = require("mongoose");
@@ -28,7 +27,6 @@ if (process.env.NODE_ENV !== "production") {
   app.use(logger("dev"));
 }
 app.use(express.json());
-app.use(cookieParser());
 
 /* -------------------- CORS -------------------- */
 const allowedOrigins = new Set([
@@ -52,7 +50,6 @@ const corsMiddleware = cors({
 
     return callback(new Error("Not allowed by CORS"));
   },
-  credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: [
     "Content-Type",
@@ -64,7 +61,7 @@ const corsMiddleware = cors({
 });
 
 app.use(corsMiddleware);
-app.options("*", corsMiddleware);
+app.options(/(.*)/, corsMiddleware);
 
 app.get("/api/v1/health", (req, res) => {
   res.status(200).json({ message: "Health check successfull" });

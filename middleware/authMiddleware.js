@@ -31,59 +31,27 @@ const authMiddleware = (req, res, next) => {
     return next();
   }
 
-  // Get access token from cookie or header
-  let accessToken = req.cookies.accessToken;
+  // Get access token from header
+  let accessToken;
 
   if (
-    !accessToken &&
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer ")
   ) {
     accessToken = req.headers.authorization.split(" ")[1];
   }
 
+  if (!accessToken) {
+    return sendResponse(res, 401, "Access denied. No valid token provided.");
+  }
+
   // Try to verify access token
   let decoded = verifyToken(accessToken);
 
-  // If access token is invalid or expired, try to refresh it
+  // If access token is invalid or expired
   if (!decoded) {
-    const refreshToken = req.cookies.refreshToken;
-
-    if (!refreshToken) {
-      return sendResponse(res, 401, "Access denied. No valid token provided.");
-    }
-
-    // Verify refresh token
-    const refreshDecoded = verifyToken(refreshToken, true);
-
-    if (!refreshDecoded) {
-      return sendResponse(
-        res,
-        401,
-        "Invalid or expired refresh token. Please login again."
-      );
-    }
-
-    // Generate new access token from refresh token
-    const user = {
-      id: refreshDecoded.userId,
-      email: refreshDecoded.email,
-      branch_id: refreshDecoded.branchId,
-    };
-
-    const newAccessToken = generateAccessToken(user);
-
-    // Set new access token in cookie
-    res.cookie("accessToken", newAccessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
-    // Use the refreshed token data for the request
-    decoded = refreshDecoded;
+    return sendResponse(res, 401, "Invalid or expired token. Please login again.");
   }
-
 
   if (!decoded.branchId && !decoded.newUser) {
     return sendResponse(res, 401, "Branch id missing in token.");

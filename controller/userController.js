@@ -100,19 +100,6 @@ const signin = async (req, res) => {
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
 
-
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
     return sendResponse(res, 200, "User signed in successfully", {
       user: {
         branch_id: user.branch_id,
@@ -123,6 +110,7 @@ const signin = async (req, res) => {
       redirect: user.branch_id ? "/dashboard" : "/registration",
       success: true,
       token: accessToken,
+      refreshToken: refreshToken,
     });
   } catch (error) {
     console.error("Error in signin:", error);
@@ -202,21 +190,11 @@ const verifyOTPAndRegister = async (req, res) => {
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
 
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
     return sendResponse(res, 201, "User registered successfully", {
       user: user,
       status: null,
+      token: accessToken,
+      refreshToken: refreshToken,
     });
   } catch (error) {
     console.error("Error in verifyOTPAndRegister:", error);

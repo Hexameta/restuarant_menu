@@ -193,24 +193,13 @@ const createBranch = async (req, res) => {
     const accessToken = generateAccessToken(userPayload);
     const refreshToken = generateRefreshToken(userPayload);
 
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
     await session.commitTransaction();
     session.endSession();
 
     return sendResponse(res, 201, "Branch created successfully", {
       branch: newBranch,
       restaurant_id: finalRestaurantId,
+      token: accessToken,
     });
   } catch (error) {
     if (session.inTransaction()) {

@@ -3,7 +3,7 @@ const { sendResponse } = require("../utils/responseHelper");
 
 const refreshToken = (req, res) => {
   try {
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.body.refreshToken;
 
     if (!refreshToken) {
       return sendResponse(res, 401, "Refresh token not found");
@@ -16,8 +16,6 @@ const refreshToken = (req, res) => {
     }
 
     // Generate new access token
-    // Note: In a real app, we might want to fetch the user from DB to ensure they still exist/aren't banned
-    // But for stateless refresh, we can use the decoded data
     const user = {
       id: decoded.userId,
       email: decoded.email,
@@ -25,12 +23,6 @@ const refreshToken = (req, res) => {
     };
 
     const newAccessToken = generateAccessToken(user);
-
-    res.cookie("accessToken", newAccessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
 
     return sendResponse(res, 200, "Token refreshed successfully", {
       token: newAccessToken,
