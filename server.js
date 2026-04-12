@@ -21,52 +21,35 @@ var menuRouter = require("./routes/menu.js");
 /* -------------------- CREATE APP -------------------- */
 var app = express();
 
+/* -------------------- CORS -------------------- */
+app.use((req, res, next) => {
+  const allowedOrigins = [
+    "https://admin.digifymenu.com",
+    "https://menu.digifymenu.com",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:3000"
+  ];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin");
+  res.setHeader("Access-Control-Max-Age", "86400");
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  next();
+});
+
 /* -------------------- BASIC MIDDLEWARE -------------------- */
 // Disable Morgan in production Lambda — each log is synchronous I/O overhead
 if (process.env.NODE_ENV !== "production") {
   app.use(logger("dev"));
 }
 app.use(express.json());
-
-/* -------------------- CORS -------------------- */
-const allowedOrigins = new Set([
-  "https://admin.digifymenu.com",
-  "https://menu.digifymenu.com",
-  "https://admin.digifymenu.in",
-  "https://menu.digifymenu.in",
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "http://localhost:5001",
-  "http://localhost:3000",
-]);
-
-const corsMiddleware = cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // Postman, curl
-
-    if (allowedOrigins.has(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(new Error("Not allowed by CORS"));
-  },
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-    "Accept",
-    "Origin",
-  ],
-  credentials: false,
-});
-
-app.use(corsMiddleware);
-app.options(/(.*)/, corsMiddleware);
-app.use((req, res, next) => {
-  res.removeHeader("Access-Control-Allow-Credentials");
-  next();
-});
 
 app.get("/api/v1/health", (req, res) => {
   res.status(200).json({ message: "Health check successfull" });
