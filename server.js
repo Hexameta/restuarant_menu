@@ -58,10 +58,15 @@ const corsMiddleware = cors({
     "Accept",
     "Origin",
   ],
+  credentials: false,
 });
 
 app.use(corsMiddleware);
 app.options(/(.*)/, corsMiddleware);
+app.use((req, res, next) => {
+  res.removeHeader("Access-Control-Allow-Credentials");
+  next();
+});
 
 app.get("/api/v1/health", (req, res) => {
   res.status(200).json({ message: "Health check successfull" });
