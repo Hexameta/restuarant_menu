@@ -12,7 +12,8 @@ const BRANCH_SELECT = "-__v";
 const CATEGORY_SELECT = "_id name image_url is_active display_order";
 const MENU_ITEM_SELECT =
   "_id category_id name description image_url is_available special_note tag no_price options";
-const CAROUSEL_SELECT = "_id branch_id title ad_type image_url valid_from valid_to";
+const CAROUSEL_SELECT =
+  "_id branch_id title ad_type image_url valid_from valid_to";
 const SPECIAL_TAG_SELECT = "_id title display_order menu_items";
 
 // API for Restaurant Details
@@ -28,7 +29,12 @@ const getBranchDetailsByslug = async (req, res) => {
       return sendResponse(res, 404, "Branch not found");
     }
 
-    return sendResponse(res, 200, "Branch details fetched successfully", branch);
+    return sendResponse(
+      res,
+      200,
+      "Branch details fetched successfully",
+      branch,
+    );
   } catch (error) {
     console.error("Get Restaurant Details By Branch Slug Error:", error);
     return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
@@ -85,7 +91,8 @@ const getMenuItemsByBranchIdForMenu = async (req, res) => {
     // Build O(1) lookup map instead of populate
     const categoryNameMap = {};
     for (let i = 0; i < branchCategories.length; i++) {
-      categoryNameMap[branchCategories[i]._id.toString()] = branchCategories[i].name;
+      categoryNameMap[branchCategories[i]._id.toString()] =
+        branchCategories[i].name;
     }
 
     const menuItems = await MenuItem.find({
@@ -210,7 +217,12 @@ const logMenuAccess = async (req, res) => {
     console.error("Log Menu Access Error:", error);
     // Only send error if headers haven't been sent
     if (!res.headersSent) {
-      return sendResponse(res, 500, "Internal Server Error", errorHandler(error));
+      return sendResponse(
+        res,
+        500,
+        "Internal Server Error",
+        errorHandler(error),
+      );
     }
   }
 };
@@ -336,8 +348,9 @@ const getFullMenuBySlug = async (req, res) => {
       };
     }
 
-    // 9. Set cache header and respond
-    res.set("Cache-Control", "public, max-age=120");
+    // // 9. Set cache header and respond
+    // If we add this it will cache, so updates need hard refresh in browser then only it will reflect
+    // res.set("Cache-Control", "public, max-age=120");
 
     return sendResponse(res, 200, "Full menu retrieved successfully", {
       restaurant: branch,
