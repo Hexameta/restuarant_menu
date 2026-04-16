@@ -22,27 +22,40 @@ var menuRouter = require("./routes/menu.js");
 var app = express();
 
 /* -------------------- CORS -------------------- */
-app.use((req, res, next) => {
-  const allowedOrigins = [
-    "https://admin.digifymenu.com",
-    "https://menu.digifymenu.com",
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:3000"
-  ];
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin");
-  res.setHeader("Access-Control-Max-Age", "86400");
+const allowedOrigins = [
+  "https://admin.digifymenu.com",
+  "https://menu.digifymenu.com",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000"
+];
 
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
-  }
-  next();
-});
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, origin);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+
+app.options("*", cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, origin);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
 /* -------------------- BASIC MIDDLEWARE -------------------- */
 // Disable Morgan in production Lambda — each log is synchronous I/O overhead
