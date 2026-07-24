@@ -11,6 +11,7 @@ const {
   searchMenuItem,
   updateMenuItemStatus,
   getInactiveMenuItems,
+  reOrderMenuItems,
 } = require("../controller/menuItemController");
 
 router.post("/", createMenuItem);
@@ -22,6 +23,8 @@ router.put("/:id", updateMenuItem);
 router.delete("/:id", deleteMenuItem);
 router.get(["/search", "/search/:branch_id"], searchMenuItem);
 router.put("/status/:id", updateMenuItemStatus);
+
+router.post("/reorder", reOrderMenuItems);
 
 module.exports = router;
 

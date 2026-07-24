@@ -11,7 +11,7 @@ const errorHandler = require("../error/joiErrorHandler/joiErrorHandler");
 const BRANCH_SELECT = "-__v";
 const CATEGORY_SELECT = "_id name image_url is_active display_order";
 const MENU_ITEM_SELECT =
-  "_id category_id name description image_url is_available special_note tag no_price options";
+  "_id category_id name description image_url is_available special_note tag no_price options display_order";
 const CAROUSEL_SELECT =
   "_id branch_id title ad_type image_url valid_from valid_to";
 const SPECIAL_TAG_SELECT = "_id title display_order menu_items";
@@ -98,7 +98,7 @@ const getMenuItemsByBranchIdForMenu = async (req, res) => {
     const menuItems = await MenuItem.find({
       category_id: { $in: categoryIds },
     })
-      .sort({ is_available: -1, created_at: 1 })
+      .sort({ is_available: -1, display_order: 1, created_at: 1 })
       .select(MENU_ITEM_SELECT)
       .lean();
 
@@ -298,7 +298,7 @@ const getFullMenuBySlug = async (req, res) => {
     const menuItemsQuery =
       categoryIds.length > 0
         ? MenuItem.find({ category_id: { $in: categoryIds } })
-            .sort({ is_available: -1, created_at: 1 })
+            .sort({ is_available: -1, display_order: 1, created_at: 1 })
             .select(MENU_ITEM_SELECT)
             .lean()
         : Promise.resolve([]);

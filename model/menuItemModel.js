@@ -23,11 +23,12 @@ const menuItemSchema = new Schema({
         enum: ["veg", "non-veg", "cool", "hot"]
     },
     no_price: String,
+    display_order: Number,
     options: [optionsSchema] // Embedded Options
 }, { timestamps: true });
 
 // Indexes for performance
-menuItemSchema.index({ category_id: 1, is_available: 1 });
+menuItemSchema.index({ category_id: 1, is_available: 1, display_order: 1 });
 menuItemSchema.index({ name: 1 }); // For search
 menuItemSchema.index({ image_url: 1 }); // For image-exists checks
 

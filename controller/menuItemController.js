@@ -22,6 +22,7 @@ const createMenuItem = async (req, res) => {
       is_available,
       special_note,
       tag,
+      display_order,
     } = req.body;
 
     if (!category_id || !name) {
@@ -55,7 +56,8 @@ const createMenuItem = async (req, res) => {
       is_available: is_available ?? true,
       special_note: special_note || null,
       tag: tag || null,
-      options: options || [] // Embedded options
+      options: options || [], // Embedded options
+      display_order: display_order || 0
     });
 
     await item.save();
@@ -114,7 +116,7 @@ const getMenuItems = async (req, res) => {
       MenuItem.countDocuments(filter),
       MenuItem.find(filter)
         .populate('category_id')
-        .sort({ _id: -1 })
+        .sort({ display_order: 1 })
         .skip(skip)
         .limit(limit)
         .lean(),
@@ -141,7 +143,7 @@ const getItemsByCategory = async (req, res) => {
     const { category_id } = req.params;
 
     const items = await MenuItem.find({ category_id })
-      .sort({ _id: -1 })
+      .sort({ display_order: 1 })
       .lean();
 
     return sendResponse(res, 200, "Menu items fetched successfully", items);
@@ -381,7 +383,7 @@ const getInactiveMenuItems = async (req, res) => {
       MenuItem.countDocuments(filter),
       MenuItem.find(filter)
         .populate('category_id')
-        .sort({ _id: -1 })
+        .sort({ display_order: 1 })
         .skip(skip)
         .limit(limit)
         .lean(),
@@ -400,6 +402,30 @@ const getInactiveMenuItems = async (req, res) => {
 };
 
 
+const reOrderMenuItems = async (req, res) => {
+  try {
+    const { orderedIds } = req.body;
+
+    if (!Array.isArray(orderedIds)) {
+      return sendResponse(res, 400, "orderedIds must be array");
+    }
+
+    const bulkOps = orderedIds.map((id, index) => ({
+        updateOne: {
+            filter: { _id: id },
+            update: { display_order: index }
+        }
+    }));
+
+    await MenuItem.bulkWrite(bulkOps);
+
+    return sendResponse(res, 200, "Menu items priority updated");
+  } catch (err) {
+    console.error(err);
+    return sendResponse(res, 500, "Server error", { error: err.message });
+  }
+};
+
 module.exports = {
   createMenuItem,
   getMenuItems,
@@ -410,5 +436,6 @@ module.exports = {
   searchMenuItem,
   checkMenuItemImageExistsDB,
   updateMenuItemStatus,
-  getInactiveMenuItems
+  getInactiveMenuItems,
+  reOrderMenuItems
 };
