@@ -14,6 +14,9 @@ const menuAccessLogSchema = new Schema({
     }
 }, { timestamps: true });
 
+// Compound index for analytics aggregation
+menuAccessLogSchema.index({ branch_id: 1, accessed_at: -1 });
+
 const MenuAccessLog = mongoose.model('MenuAccessLog', menuAccessLogSchema);
 
 module.exports = { MenuAccessLog };

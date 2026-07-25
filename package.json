@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "nodemon ./bin/www"
+    "start": "nodemon server.js",
+    "build": "node esbuild.config.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.992.0",
@@ -26,7 +27,12 @@
     "nodemailer": "^7.0.10",
     "nodemon": "^3.1.10",
     "otp-generator": "^4.0.1",
+    "serverless-http": "^4.0.0",
     "sharp": "^0.34.5",
     "tough-cookie": "^6.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.4",
+    "npm-run-all": "^4.1.5"
   }
 }

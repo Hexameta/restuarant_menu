@@ -1,14 +1,14 @@
-
 var createError = require("http-errors");
 var express = require("express");
-var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 var cors = require("cors");
 const mongoose = require("mongoose");
-const connectDB = require("./config/db.connect");
+const serverless = require("serverless-http");
 
+const connectDB = require("./config/db.connect");
 const { authMiddleware } = require("./middleware/authMiddleware");
 
+/* -------------------- ROUTES -------------------- */
 var usersRouter = require("./routes/users.js");
 var restaurantRouter = require("./routes/restaurantRoute");
 var categoryRouter = require("./routes/category.js");
@@ -18,53 +18,58 @@ var specialTagRouter = require("./routes/specialTagRoutes.js");
 var adsRouter = require("./routes/ads.js");
 var menuRouter = require("./routes/menu.js");
 
-// Connect to MongoDB
-connectDB();
-
+/* -------------------- CREATE APP -------------------- */
 var app = express();
 
-/* -------------------- BASIC MIDDLEWARE -------------------- */
-app.use(logger("dev"));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-
-/* -------------------- CORS (FINAL) -------------------- */
+/* -------------------- CORS -------------------- */
 const allowedOrigins = [
   "https://admin.digifymenu.com",
   "https://menu.digifymenu.com",
   "http://localhost:5173",
   "http://localhost:5174",
-  "http://localhost:5001",
-  "http://localhost:3000"
+  "http://localhost:3000",
 ];
 
-const corsMiddleware = cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // Postman, curl
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, origin);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+app.options(
+  /.*/,
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, origin);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
+/* -------------------- BASIC MIDDLEWARE -------------------- */
+// Disable Morgan in production Lambda — each log is synchronous I/O overhead
+if (process.env.NODE_ENV !== "production") {
+  app.use(logger("dev"));
+}
+app.use(express.json());
 
-    return callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-    "Accept",
-    "Origin",
-  ],
+app.get("/api/v1/health", (req, res) => {
+  res.status(200).json({ message: "Health check successfull" });
 });
-
-/* 🔥 CORS MUST COME BEFORE AUTH */
-app.use(corsMiddleware);
-
-/* 🔥 EXPLICIT OPTIONS HANDLER (MANDATORY) */
-app.options("*", corsMiddleware);
 
 /* -------------------- AUTH -------------------- */
 app.use(authMiddleware);
@@ -90,12 +95,38 @@ app.use(function (err, req, res, next) {
   res.status(statusCode).json({
     success: false,
     message: err.message,
-    error: req.app.get("env") === "development" ? err : {},
+    error: process.env.NODE_ENV === "development" ? err : {},
   });
 });
 
-mongoose.connection.once('open', () => {
-    console.log('Connected to MongoDB');
+/* -------------------- MONGO LOG -------------------- */
+mongoose.connection.once("open", () => {
+  console.log("Connected to MongoDB");
 });
 
-module.exports = app;
+/* -------------------- EXPORT FOR LAMBDA -------------------- */
+const handler = serverless(app);
+
+// Start connection during the Lambda INIT phase to mitigate cold start latency
+connectDB().catch((err) => console.error("Initial DB connection failed:", err));
+
+module.exports.handler = async (event, context) => {
+  // Prevents Lambda from waiting for open MongoDB connections
+  // Without this, Lambda hangs until timeout after the response is sent
+  context.callbackWaitsForEmptyEventLoop = false;
+
+  // Connect to DB (connectDB must have readyState check inside it)
+  await connectDB();
+
+  return handler(event, context);
+};
+
+/* -------------------- LOCAL SERVER (ONLY FOR DEV) -------------------- */
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 5000;
+  connectDB().then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running locally on port ${PORT}`);
+    });
+  });
+}

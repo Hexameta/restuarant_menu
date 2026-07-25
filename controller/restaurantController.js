@@ -28,7 +28,7 @@ const searchRestaurants = async (req, res) => {
       filter.name = { $regex: search, $options: "i" }; // Case-insensitive partial match
     }
 
-    const restaurants = await Restaurant.find(filter).select("name logo");
+    const restaurants = await Restaurant.find(filter).select("name logo").lean();
 
     // Map _id to id for frontend compatibility if needed, or just return as is
     // Mongoose returns _id by default.
@@ -182,7 +182,6 @@ const createBranch = async (req, res) => {
 
     const user = await User.findById(userId).session(session);
 
-    console.log(user);
 
     // Mongoose objects are BSON, need .toObject() or direct access usually works but better to be safe for JWT
     const userPayload = {
@@ -194,24 +193,13 @@ const createBranch = async (req, res) => {
     const accessToken = generateAccessToken(userPayload);
     const refreshToken = generateRefreshToken(userPayload);
 
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
     await session.commitTransaction();
     session.endSession();
 
     return sendResponse(res, 201, "Branch created successfully", {
       branch: newBranch,
       restaurant_id: finalRestaurantId,
+      token: accessToken,
     });
   } catch (error) {
     if (session.inTransaction()) {
@@ -230,7 +218,7 @@ const getResturantById = async (req, res) => {
     const { branchId } = req.user;
 
     // In Mongoose, settings are embedded in Branch
-    const restaurant = await Branch.findById(branchId);
+    const restaurant = await Branch.findById(branchId).lean();
 
     if (!restaurant) {
       return sendResponse(res, 404, "Restaurant not found");
@@ -367,8 +355,10 @@ const updateBranchAndSettings = async (req, res) => {
 const getAnalytics = async (req, res) => {
   try {
     const { slug } = req.params;
+    const queryMonth = req.query.month ? parseInt(req.query.month) : undefined;
+    const queryYear = req.query.year ? parseInt(req.query.year) : undefined;
 
-    const branch = await Branch.findOne({ slug: slug, is_active: true });
+    const branch = await Branch.findOne({ slug: slug, is_active: true }).select('_id').lean();
 
     if (!branch) {
       return res.status(404).json({
@@ -379,47 +369,50 @@ const getAnalytics = async (req, res) => {
 
     const branchId = branch._id;
 
-    // 1) categories
-    const totalCategories = await Category.countDocuments({
-      branch_id: branchId,
-      is_active: true,
-    });
-
-    // 2) items (through category) if categories are linked
-    // In Mongoose, MenuItem has category_id. We need to find categories for this branch first?
-    // Or if MenuItem has direct branch_id?
-    // Checking MenuItem model... Only category_id.
-    // So: Find all categories for branch -> Get their IDs -> Count MenuItems with those Category IDs.
-
+    // Parallelize all counts — no dependencies between them
     const branchCategories = await Category.find({
       branch_id: branchId,
-    }).select("_id");
+    }).select("_id").lean();
     const categoryIds = branchCategories.map((c) => c._id);
 
-    const totalItems = await MenuItem.countDocuments({
-      category_id: { $in: categoryIds },
-    });
-
-    // 3) monthly visitors
-    const visitors = await MenuAccessLog.aggregate([
-      { $match: { branch_id: branchId } },
-      {
-        $group: {
-          _id: {
-            month: { $month: "$accessed_at" },
-            year: { $year: "$accessed_at" },
+    const [totalCategories, totalItems, visitors] = await Promise.all([
+      Category.countDocuments({
+        branch_id: branchId,
+        is_active: true,
+      }),
+      categoryIds.length > 0
+        ? MenuItem.countDocuments({ category_id: { $in: categoryIds } })
+        : Promise.resolve(0),
+      MenuAccessLog.aggregate([
+        { $match: { branch_id: branchId } },
+        {
+          $group: {
+            _id: {
+              day: { $dayOfMonth: "$accessed_at" },
+              month: { $month: "$accessed_at" },
+              year: { $year: "$accessed_at" },
+            },
+            count: { $sum: 1 },
           },
-          count: { $sum: 1 },
         },
-      },
+      ]),
     ]);
 
+    const currentYear = queryYear || new Date().getFullYear();
+    const currentMonth = queryMonth || (new Date().getMonth() + 1); // 1-indexed
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+
     let monthlyVisitors = Array(12).fill(0);
-    const currentYear = new Date().getFullYear();
+    let dailyVisitors = Array(daysInMonth).fill(0);
 
     visitors.forEach((row) => {
       if (row._id.year === currentYear) {
-        monthlyVisitors[row._id.month - 1] = row.count; // month 1-12
+        // Since we grouped by day, multiple entries for a month will exist.
+        // We accumulate them for monthlyVisitors.
+        monthlyVisitors[row._id.month - 1] += row.count; 
+        if (row._id.month === currentMonth && row._id.day) {
+          dailyVisitors[row._id.day - 1] = row.count;
+        }
       }
     });
 
@@ -429,6 +422,7 @@ const getAnalytics = async (req, res) => {
         totalCategories,
         totalItems,
         monthlyVisitors,
+        dailyVisitors,
       },
     });
   } catch (e) {

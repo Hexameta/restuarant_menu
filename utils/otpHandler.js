@@ -25,8 +25,7 @@ const transporter = nodemailer.createTransport({
 const sendOTPEmail = async (email, otp, userName) => {
   try {
     const templatePath = path.join(
-      __dirname,
-      "..",
+      process.cwd(),
       "templates",
       "signupOtpEmail.ejs"
     );

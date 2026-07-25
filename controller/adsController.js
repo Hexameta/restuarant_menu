@@ -61,11 +61,14 @@ const getAds = async (req, res) => {
 
     const filter = { branch_id, is_admin: false, is_expired: false };
 
-    const count = await Ads.countDocuments(filter);
-    const rows = await Ads.find(filter)
-      .sort({ _id: -1 })
-      .skip(skip)
-      .limit(limit);
+    const [count, rows] = await Promise.all([
+      Ads.countDocuments(filter),
+      Ads.find(filter)
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ]);
 
     return res.status(200).json({
       success: true,
@@ -93,7 +96,7 @@ const getActiveAds = async (req, res) => {
       branch_id,
       valid_from: { $lte: now },
       valid_to: { $gte: now },
-    }).sort({ _id: -1 });
+    }).sort({ _id: -1 }).lean();
 
     return res.status(200).json({ success: true, data: ads });
   } catch (error) {
@@ -175,7 +178,7 @@ const checkAdsImageExistsDB = async (fileName, id = null) => {
       filter._id = { $ne: id };
     }
 
-    const exists = await Ads.findOne(filter);
+    const exists = await Ads.findOne(filter).select('_id').lean();
 
     return {
       success: true,

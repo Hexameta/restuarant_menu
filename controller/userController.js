@@ -21,7 +21,6 @@ const checkUser = async (req, res) => {
       return sendResponse(res, 400, "Email is required");
     }
 
-
     // Check if user exists
     const user = await User.findOne({ email: email });
 
@@ -47,7 +46,7 @@ const checkUser = async (req, res) => {
     if (emailSent) {
       // Mongoose uses _id, not id by default, but virtual 'id' might exist. Safer to use _id
       return sendResponse(res, 200, "OTP sent to email", {
-        otpId: otpRecord._id, 
+        otpId: otpRecord._id,
         email: email,
       });
     } else {
@@ -82,7 +81,6 @@ const signin = async (req, res) => {
     }
 
     let tokenPayload = {};
-    console.log(user.branch_id);
 
     if (user.branch_id !== null) {
       tokenPayload = {
@@ -99,25 +97,8 @@ const signin = async (req, res) => {
       };
     }
 
-    console.log(tokenPayload);
-
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
-
-    console.log(accessToken);
-    console.log(refreshToken);
-
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
 
     return sendResponse(res, 200, "User signed in successfully", {
       user: {
@@ -128,7 +109,8 @@ const signin = async (req, res) => {
       },
       redirect: user.branch_id ? "/dashboard" : "/registration",
       success: true,
-      token: accessToken, 
+      token: accessToken,
+      refreshToken: refreshToken,
     });
   } catch (error) {
     console.error("Error in signin:", error);
@@ -146,7 +128,7 @@ const verifyOTPAndRegister = async (req, res) => {
       return sendResponse(
         res,
         400,
-        "All fields are required: otpId, otp, email, password"
+        "All fields are required: otpId, otp, email, password",
       );
     }
 
@@ -179,9 +161,9 @@ const verifyOTPAndRegister = async (req, res) => {
 
     const user = await User.create({
       email: email,
-      Password: hashedPassword, 
-      username: email.split("@")[0], 
-      branch_id: null, 
+      Password: hashedPassword,
+      username: email.split("@")[0],
+      branch_id: null,
     });
 
     // Mark OTP as validated
@@ -189,7 +171,6 @@ const verifyOTPAndRegister = async (req, res) => {
     await otpRecord.save();
 
     let tokenPayload = {};
-    console.log(user.branch_id);
 
     if (user.branch_id !== null) {
       tokenPayload = {
@@ -206,26 +187,14 @@ const verifyOTPAndRegister = async (req, res) => {
       };
     }
 
-    console.log(tokenPayload);
-
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
-
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
 
     return sendResponse(res, 201, "User registered successfully", {
       user: user,
       status: null,
+      token: accessToken,
+      refreshToken: refreshToken,
     });
   } catch (error) {
     console.error("Error in verifyOTPAndRegister:", error);

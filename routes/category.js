@@ -8,16 +8,16 @@ const {
   deleteCategory,
   searchCategory,
   reOrderCategory,
-  updateStatus
+  updateStatus,
 } = require("../controller/categoryController");
 
 router.post("/", createCategory);
-router.get("/search/:id?", searchCategory); 
+router.get(["/search", "/search/:id"], searchCategory);
 router.get("/", getCategories);
-router.get("/single/:id", getCategoryById);
+router.get(["/search", "/search/:id"], getCategoryById);
 router.put("/:id", updateCategory);
 router.delete("/:id", deleteCategory);
-router.put("/status/:id", updateStatus);
+router.put(["/status", "/status/:id"], updateStatus);
 
 router.post("/reorder", reOrderCategory);
 

@@ -56,7 +56,8 @@ const getSpecialTags = async (req, res) => {
     const branch_id = req.user.branchId; 
 
     const tags = await SpecialTag.find({ branch_id })
-      .sort({ display_order: 1 });
+      .sort({ display_order: 1 })
+      .lean();
 
     return sendResponse(res, 200, "Special tags fetched successfully", tags);
 
@@ -132,7 +133,7 @@ const getSpecialTagItems = async (req, res) => {
     const tag = await SpecialTag.findById(tag_id).populate({
       path: 'menu_items',
       select: 'name image_url'
-    });
+    }).lean();
 
     if (!tag) {
       return sendResponse(res, 404, "Special tag not found");

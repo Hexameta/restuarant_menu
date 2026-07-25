@@ -24,6 +24,9 @@ const adsSchema = new Schema({
     }
 }, { timestamps: true });
 
+// Compound index covering carousel/banner queries
+adsSchema.index({ branch_id: 1, is_expired: 1, valid_from: 1, valid_to: 1 });
+
 const Ads = mongoose.model('Ads', adsSchema);
 
 module.exports = { Ads };
