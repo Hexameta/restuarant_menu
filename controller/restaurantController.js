@@ -355,6 +355,8 @@ const updateBranchAndSettings = async (req, res) => {
 const getAnalytics = async (req, res) => {
   try {
     const { slug } = req.params;
+    const queryMonth = req.query.month ? parseInt(req.query.month) : undefined;
+    const queryYear = req.query.year ? parseInt(req.query.year) : undefined;
 
     const branch = await Branch.findOne({ slug: slug, is_active: true }).select('_id').lean();
 
@@ -386,6 +388,7 @@ const getAnalytics = async (req, res) => {
         {
           $group: {
             _id: {
+              day: { $dayOfMonth: "$accessed_at" },
               month: { $month: "$accessed_at" },
               year: { $year: "$accessed_at" },
             },
@@ -395,12 +398,21 @@ const getAnalytics = async (req, res) => {
       ]),
     ]);
 
+    const currentYear = queryYear || new Date().getFullYear();
+    const currentMonth = queryMonth || (new Date().getMonth() + 1); // 1-indexed
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+
     let monthlyVisitors = Array(12).fill(0);
-    const currentYear = new Date().getFullYear();
+    let dailyVisitors = Array(daysInMonth).fill(0);
 
     visitors.forEach((row) => {
       if (row._id.year === currentYear) {
-        monthlyVisitors[row._id.month - 1] = row.count; // month 1-12
+        // Since we grouped by day, multiple entries for a month will exist.
+        // We accumulate them for monthlyVisitors.
+        monthlyVisitors[row._id.month - 1] += row.count; 
+        if (row._id.month === currentMonth && row._id.day) {
+          dailyVisitors[row._id.day - 1] = row.count;
+        }
       }
     });
 
@@ -410,6 +422,7 @@ const getAnalytics = async (req, res) => {
         totalCategories,
         totalItems,
         monthlyVisitors,
+        dailyVisitors,
       },
     });
   } catch (e) {
